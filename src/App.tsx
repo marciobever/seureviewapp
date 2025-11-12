@@ -69,7 +69,7 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('contentGenerator');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-  // util: busca perfil
+  // utils
   const fetchProfile = async (u: User): Promise<UserProfile | null> => {
     const { data, error } = await supabase!
       .from('profiles')
@@ -77,7 +77,6 @@ const App: React.FC = () => {
       .eq('id', u.id)
       .single();
 
-    // PGRST116 = no rows
     if (error && error.code !== 'PGRST116') {
       console.error('Error fetching profile:', error);
       return null;
@@ -85,7 +84,6 @@ const App: React.FC = () => {
     return (data as UserProfile) ?? null;
   };
 
-  // util: cria perfil fallback
   const ensureProfile = async (u: User): Promise<UserProfile | null> => {
     let p = await fetchProfile(u);
     if (p) return p;
@@ -123,7 +121,6 @@ const App: React.FC = () => {
     return newProfile as UserProfile;
   };
 
-  // util: aplica sessão atual ao estado
   const handleSession = async (session: Session | null) => {
     const u = session?.user ?? null;
     setUser(u);
@@ -136,7 +133,6 @@ const App: React.FC = () => {
 
     const p = await ensureProfile(u);
     if (!p) {
-      // se falhar, signOut e volta
       await supabase!.auth.signOut().catch(() => {});
       setUser(null);
       setProfile(null);
@@ -144,7 +140,6 @@ const App: React.FC = () => {
       return;
     }
 
-    // safety credit default
     if (!p.credits) {
       p.credits = p.plan === 'PRO' ? 50 : p.plan === 'AGENCY' ? 150 : 5;
     }
@@ -155,7 +150,6 @@ const App: React.FC = () => {
   };
 
   useEffect(() => {
-    // Dev mode
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('dev') === 'true') {
       console.warn('--- DEV MODE ACTIVATED ---');
@@ -186,33 +180,40 @@ const App: React.FC = () => {
       return;
     }
 
-    // Restaurar plano escolhido
     const storedPlan = sessionStorage.getItem('selectedPlan');
     if (storedPlan) setSelectedPlan(storedPlan);
 
-    // 1) Carregar sessão atual imediatamente (pega o login pós-OAuth)
     const boot = async () => {
       setLoading(true);
 
-      // Trata possíveis erros vindos do redirect do OAuth
+      // 0) Se voltou do Google com ?code=... ou ?access_token=..., troca por sessão
+      const hasOAuthParams = /[?&](code|access_token)=/.test(window.location.search);
+      if (hasOAuthParams) {
+        const { error } = await supabase!.auth.exchangeCodeForSession({ currentUrl: window.location.href });
+        if (error) console.error('OAuth exchange error:', error);
+        // limpa os params da URL
+        window.history.replaceState({}, document.title, window.location.pathname);
+      }
+
+      // 1) Trata erros via fragmento (caso provider devolva #error=…)
       const hash = new URL(window.location.href).hash;
       if (hash && hash.includes('error=')) {
         const params = new URLSearchParams(hash.replace(/^#/, ''));
         const errDesc = params.get('error_description');
         console.error('OAuth error:', errDesc || 'unknown');
-        // limpa fragmento da URL sem recarregar
         history.replaceState(null, '', window.location.pathname + window.location.search);
       }
 
+      // 2) Busca sessão atual e aplica
       const { data: sessData, error: sessErr } = await supabase!.auth.getSession();
       if (sessErr) console.error('getSession error:', sessErr);
       await handleSession(sessData?.session ?? null);
+
       setLoading(false);
     };
 
     boot();
 
-    // 2) Listener para mudanças futuras (autoRefresh / signOut / etc.)
     const { data: authListener } = supabase!.auth.onAuthStateChange(async (_event, session) => {
       setLoading(true);
       await handleSession(session);
