@@ -69,7 +69,7 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('contentGenerator');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-  // utils
+  // --------- helpers: profile ----------
   const fetchProfile = async (u: User): Promise<UserProfile | null> => {
     const { data, error } = await supabase!
       .from('profiles')
@@ -77,6 +77,7 @@ const App: React.FC = () => {
       .eq('id', u.id)
       .single();
 
+    // PGRST116 = no rows
     if (error && error.code !== 'PGRST116') {
       console.error('Error fetching profile:', error);
       return null;
@@ -88,17 +89,19 @@ const App: React.FC = () => {
     let p = await fetchProfile(u);
     if (p) return p;
 
-    console.log('Profile not found, retry in 1.5s…');
+    // pequeno retry para eventual delay de trigger/replicação
     await new Promise(r => setTimeout(r, 1500));
     p = await fetchProfile(u);
     if (p) return p;
 
-    console.warn('Creating profile fallback…');
+    console.warn('Profile não encontrado; criando fallback…');
+
     const getCreditsForPlan = (plan?: string | null) => {
       if (plan === 'PRO') return 50;
       if (plan === 'AGENCY') return 150;
       return 5;
     };
+
     const planFromReg = sessionStorage.getItem('selectedPlan') || 'FREE';
     const initialPlan = (['FREE', 'PRO', 'AGENCY'].includes(planFromReg) ? planFromReg : 'FREE') as UserProfile['plan'];
 
@@ -115,7 +118,7 @@ const App: React.FC = () => {
       .single();
 
     if (insertError) {
-      console.error('Fatal: could not create profile.', insertError);
+      console.error('Falha ao criar profile.', insertError);
       return null;
     }
     return newProfile as UserProfile;
@@ -143,13 +146,16 @@ const App: React.FC = () => {
     if (!p.credits) {
       p.credits = p.plan === 'PRO' ? 50 : p.plan === 'AGENCY' ? 150 : 5;
     }
+
     setProfile(p);
 
     const planFromStorage = sessionStorage.getItem('selectedPlan');
     setFlowState(planFromStorage ? 'payment' : 'dashboard');
   };
 
+  // --------- boot + listeners ----------
   useEffect(() => {
+    // DEV MODE opcional via ?dev=true
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('dev') === 'true') {
       console.warn('--- DEV MODE ACTIVATED ---');
@@ -184,36 +190,48 @@ const App: React.FC = () => {
     if (storedPlan) setSelectedPlan(storedPlan);
 
     const boot = async () => {
-      setLoading(true);
+      try {
+        setLoading(true);
 
-      // 0) Se voltou do Google com ?code=... ou ?access_token=..., troca por sessão
-      const hasOAuthParams = /[?&](code|access_token)=/.test(window.location.search);
-      if (hasOAuthParams) {
-        const { error } = await supabase!.auth.exchangeCodeForSession({ currentUrl: window.location.href });
-        if (error) console.error('OAuth exchange error:', error);
-        // limpa os params da URL
-        window.history.replaceState({}, document.title, window.location.pathname);
+        const fullUrl = new URL(window.location.href);
+
+        // Trata erro do OAuth no fragmento
+        if (fullUrl.hash && fullUrl.hash.includes('error=')) {
+          const params = new URLSearchParams(fullUrl.hash.replace(/^#/, ''));
+          console.error('OAuth error:', params.get('error_description') || 'unknown');
+          history.replaceState(null, '', window.location.pathname + window.location.search);
+        }
+
+        // Troca ?code=... por sessão (PKCE) – apenas uma vez
+        const code = fullUrl.searchParams.get('code');
+        const exchanged = sessionStorage.getItem('sb-code-exchanged') === '1';
+        if (code && !exchanged) {
+          try {
+            const { error } = await supabase!.auth.exchangeCodeForSession(code);
+            if (error) {
+              console.error('exchangeCodeForSession error:', error);
+            } else {
+              sessionStorage.setItem('sb-code-exchanged', '1');
+              // limpa a URL (remove ?code=… & state=…)
+              history.replaceState(null, '', window.location.pathname);
+            }
+          } catch (e) {
+            console.error('exchangeCodeForSession throw:', e);
+          }
+        }
+
+        // Busca sessão atual (cobre fragmento #access_token quando detectSessionInUrl=true)
+        const { data, error } = await supabase!.auth.getSession();
+        if (error) console.error('getSession error:', error);
+        await handleSession(data?.session ?? null);
+      } finally {
+        setLoading(false);
       }
-
-      // 1) Trata erros via fragmento (caso provider devolva #error=…)
-      const hash = new URL(window.location.href).hash;
-      if (hash && hash.includes('error=')) {
-        const params = new URLSearchParams(hash.replace(/^#/, ''));
-        const errDesc = params.get('error_description');
-        console.error('OAuth error:', errDesc || 'unknown');
-        history.replaceState(null, '', window.location.pathname + window.location.search);
-      }
-
-      // 2) Busca sessão atual e aplica
-      const { data: sessData, error: sessErr } = await supabase!.auth.getSession();
-      if (sessErr) console.error('getSession error:', sessErr);
-      await handleSession(sessData?.session ?? null);
-
-      setLoading(false);
     };
 
     boot();
 
+    // Ouve mudanças futuras (refresh/signOut/signIn)
     const { data: authListener } = supabase!.auth.onAuthStateChange(async (_event, session) => {
       setLoading(true);
       await handleSession(session);
@@ -225,6 +243,7 @@ const App: React.FC = () => {
     };
   }, []);
 
+  // --------- actions ----------
   const handleSelectPlan = (planName: string) => {
     setSelectedPlan(planName);
     sessionStorage.setItem('selectedPlan', planName);
@@ -258,6 +277,7 @@ const App: React.FC = () => {
     }
   };
 
+  // --------- render ----------
   const renderCurrentPage = () => {
     if (!user || !profile) return <LoadingFallback />;
 
