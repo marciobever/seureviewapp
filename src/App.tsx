@@ -261,7 +261,11 @@ const App: React.FC = () => {
 
   const handleRegistrationSuccess = () => setFlowState('payment');
 
-  const handleLoginClick = () => setFlowState('login');
+  // ✅ se já estiver autenticado, não manda pra tela de login
+  const handleLoginClick = () => {
+    if (user && profile) setFlowState('dashboard');
+    else setFlowState('login');
+  };
 
   const handleShowContact = () => setFlowState('contact');
 
@@ -303,7 +307,8 @@ const App: React.FC = () => {
   const renderAppContent = () => {
     if (loading) return <LoadingFallback />;
 
-    if (user && profile && flowState === 'dashboard') {
+    // ✅ Prioridade: se tem sessão + profile, mostramos o app (exceto fluxo de pagamento)
+    if (user && profile && flowState !== 'payment') {
       return (
         <DashboardLayout
           user={user}
@@ -317,9 +322,8 @@ const App: React.FC = () => {
       );
     }
 
-    if (user && !profile && flowState === 'dashboard') {
-      return <LoadingFallback />;
-    }
+    // sessão existe mas o profile ainda está chegando
+    if (user && !profile) return <LoadingFallback />;
 
     if (flowState === 'register' && selectedPlan) {
       return (
@@ -336,12 +340,16 @@ const App: React.FC = () => {
     }
 
     if (flowState === 'payment' && selectedPlan) {
-      return <PaymentPage planName={selectedPlan} onPaymentSuccess={handlePaymentSuccess} onBack={() => setFlowState('landing')} />;
+      return (
+        <PaymentPage
+          planName={selectedPlan}
+          onPaymentSuccess={handlePaymentSuccess}
+          onBack={() => setFlowState('landing')}
+        />
+      );
     }
 
-    if (flowState === 'contact') {
-      return <ContactPage onBack={() => setFlowState('landing')} />;
-    }
+    if (flowState === 'contact') return <ContactPage onBack={() => setFlowState('landing')} />;
 
     if (flowState === 'login') {
       return (
@@ -354,7 +362,13 @@ const App: React.FC = () => {
       );
     }
 
-    return <LandingPage onSelectPlan={handleSelectPlan} onShowContact={handleShowContact} onLoginClick={handleLoginClick} />;
+    return (
+      <LandingPage
+        onSelectPlan={handleSelectPlan}
+        onShowContact={handleShowContact}
+        onLoginClick={handleLoginClick}
+      />
+    );
   };
 
   return <Suspense fallback={<LoadingFallback />}>{renderAppContent()}</Suspense>;
