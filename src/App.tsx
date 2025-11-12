@@ -1,4 +1,4 @@
-import React, { useState, useEffect, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { supabase, supabaseConfigured } from './services/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
@@ -69,6 +69,10 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('contentGenerator');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
+  // anti-loop: limite de tentativas para obter/criar profile
+  const profileTries = useRef(0);
+  const MAX_PROFILE_TRIES = 3;
+
   // --------- helpers: profile ----------
   const fetchProfile = async (u: User): Promise<UserProfile | null> => {
     const { data, error } = await supabase!
@@ -77,51 +81,51 @@ const App: React.FC = () => {
       .eq('id', u.id)
       .single();
 
-    // PGRST116 = no rows
     if (error && error.code !== 'PGRST116') {
-      console.error('Error fetching profile:', error);
+      console.error('profiles SELECT error:', error);
       return null;
     }
     return (data as UserProfile) ?? null;
   };
 
   const ensureProfile = async (u: User): Promise<UserProfile | null> => {
-    let p = await fetchProfile(u);
-    if (p) return p;
+    // 1) tenta buscar
+    const found = await fetchProfile(u);
+    if (found) return found;
 
-    // pequeno retry para eventual delay de trigger/replicação
-    await new Promise(r => setTimeout(r, 1500));
-    p = await fetchProfile(u);
-    if (p) return p;
-
-    console.warn('Profile não encontrado; criando fallback…');
-
-    const getCreditsForPlan = (plan?: string | null) => {
-      if (plan === 'PRO') return 50;
-      if (plan === 'AGENCY') return 150;
-      return 5;
-    };
-
-    const planFromReg = sessionStorage.getItem('selectedPlan') || 'FREE';
-    const initialPlan = (['FREE', 'PRO', 'AGENCY'].includes(planFromReg) ? planFromReg : 'FREE') as UserProfile['plan'];
-
-    const { data: newProfile, error: insertError } = await supabase!
-      .from('profiles')
-      .insert({
-        id: u.id,
-        full_name: u.user_metadata.full_name || u.email || 'Novo Usuário',
-        avatar_url: u.user_metadata.avatar_url || '',
-        plan: initialPlan,
-        credits: getCreditsForPlan(initialPlan),
-      })
-      .select()
-      .single();
-
-    if (insertError) {
-      console.error('Falha ao criar profile.', insertError);
-      return null;
+    // 2) pequeno retry (trigger pode atrasar)
+    if (profileTries.current < MAX_PROFILE_TRIES) {
+      profileTries.current += 1;
+      await new Promise(r => setTimeout(r, 1200));
+      const again = await fetchProfile(u);
+      if (again) return again;
     }
-    return newProfile as UserProfile;
+
+    // 3) fallback: tenta inserir (policies precisam permitir)
+    try {
+      const planFromReg = (sessionStorage.getItem('selectedPlan') || 'FREE') as UserProfile['plan'];
+      const credits = planFromReg === 'PRO' ? 50 : planFromReg === 'AGENCY' ? 150 : 5;
+
+      const { data: inserted, error: insErr } = await supabase!
+        .from('profiles')
+        .insert({
+          id: u.id,
+          full_name: u.user_metadata.full_name || u.email || 'Novo Usuário',
+          avatar_url: u.user_metadata.avatar_url || '',
+          plan: planFromReg,
+          credits,
+        })
+        .select()
+        .single();
+
+      if (!insErr && inserted) return inserted as UserProfile;
+      console.warn('profiles INSERT fallback error:', insErr);
+    } catch (e) {
+      console.warn('profiles INSERT fallback exception:', e);
+    }
+
+    // 4) falhou: retorna null (app sai do spinner)
+    return null;
   };
 
   const handleSession = async (session: Session | null) => {
@@ -136,10 +140,9 @@ const App: React.FC = () => {
 
     const p = await ensureProfile(u);
     if (!p) {
-      await supabase!.auth.signOut().catch(() => {});
-      setUser(null);
+      // não desloga em loop; manda para tela segura
       setProfile(null);
-      setFlowState('landing');
+      setFlowState('login'); // ou 'landing'
       return;
     }
 
@@ -195,14 +198,14 @@ const App: React.FC = () => {
 
         const fullUrl = new URL(window.location.href);
 
-        // Trata erro do OAuth no fragmento
+        // Trata erro vindo no fragmento (OAuth com hash)
         if (fullUrl.hash && fullUrl.hash.includes('error=')) {
           const params = new URLSearchParams(fullUrl.hash.replace(/^#/, ''));
           console.error('OAuth error:', params.get('error_description') || 'unknown');
           history.replaceState(null, '', window.location.pathname + window.location.search);
         }
 
-        // Troca ?code=... por sessão (PKCE) – apenas uma vez
+        // Troca ?code=... (PKCE) por sessão — apenas uma vez
         const code = fullUrl.searchParams.get('code');
         const exchanged = sessionStorage.getItem('sb-code-exchanged') === '1';
         if (code && !exchanged) {
@@ -212,15 +215,14 @@ const App: React.FC = () => {
               console.error('exchangeCodeForSession error:', error);
             } else {
               sessionStorage.setItem('sb-code-exchanged', '1');
-              // limpa a URL (remove ?code=… & state=…)
-              history.replaceState(null, '', window.location.pathname);
+              history.replaceState(null, '', window.location.pathname); // limpa query
             }
           } catch (e) {
             console.error('exchangeCodeForSession throw:', e);
           }
         }
 
-        // Busca sessão atual (cobre fragmento #access_token quando detectSessionInUrl=true)
+        // Pega sessão atual (cobre também #access_token quando detectSessionInUrl=true)
         const { data, error } = await supabase!.auth.getSession();
         if (error) console.error('getSession error:', error);
         await handleSession(data?.session ?? null);
@@ -231,7 +233,7 @@ const App: React.FC = () => {
 
     boot();
 
-    // Ouve mudanças futuras (refresh/signOut/signIn)
+    // Ouve refresh/signIn/signOut
     const { data: authListener } = supabase!.auth.onAuthStateChange(async (_event, session) => {
       setLoading(true);
       await handleSession(session);
