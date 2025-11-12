@@ -1,17 +1,31 @@
-
+// services/supabase.ts
 import { createClient } from '@supabase/supabase-js';
 
-const supabaseUrl = 'https://vuhtjpscypnekpbtqfxx.supabase.co';
-const supabaseAnonKey = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1aHRqcHNjeXBuZWtwYnRxZnh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NTgyMTAsImV4cCI6MjA3ODQzNDIxMH0.fFoFsA9-gUpHa4toGejeDQaOb-FXAptgrabwNujg-qY';
+// ⚠️ Em produção prefira variáveis de ambiente Vite:
+// const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL;
+// const SUPABASE_ANON_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY;
 
-export const supabaseConfigured = !!(supabaseUrl && supabaseAnonKey);
+const SUPABASE_URL = 'https://vuhtjpscypnekpbtqfxx.supabase.co';
+const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InZ1aHRqcHNjeXBuZWtwYnRxZnh4Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NjI4NTgyMTAsImV4cCI6MjA3ODQzNDIxMH0.fFoFsA9-gUpHa4toGejeDQaOb-FXAptgrabwNujg-qY';
 
-let supabase = null;
+export const supabaseConfigured = Boolean(SUPABASE_URL && SUPABASE_ANON_KEY);
 
-if (supabaseConfigured) {
-  supabase = createClient(supabaseUrl, supabaseAnonKey);
-} else {
-  console.error("Supabase URL (SUPABASE_URL) and Anon Key (SUPABASE_ANON_KEY) are not configured in environment variables. The app will not function correctly.");
+export const supabase = supabaseConfigured
+  ? createClient(SUPABASE_URL, SUPABASE_ANON_KEY, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true,
+        detectSessionInUrl: true, // lê o #access_token após o redirect OAuth
+      },
+    })
+  : null;
+
+// opcional: ajuda no debug pelo console do navegador
+// @ts-ignore
+if (typeof window !== 'undefined') (window as any).__sup = supabase;
+
+if (!supabaseConfigured) {
+  console.error(
+    'Supabase não configurado. Defina VITE_SUPABASE_URL e VITE_SUPABASE_ANON_KEY (ou ajuste neste arquivo).'
+  );
 }
-
-export { supabase };
