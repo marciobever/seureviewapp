@@ -59,13 +59,22 @@ const SupabaseConfigError: React.FC = () => (
   </div>
 );
 
+// ====== helpers de ambiente (evita quebrar se faltar a key de IA) ======
+const HAS_GEMINI = !!(import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+
 const App: React.FC = () => {
   if (!supabaseConfigured) return <SupabaseConfigError />;
 
-  const [flowState, setFlowState] = useState<AppFlowState>('landing');
+  // ====== roteamento simples por pathname ======
+  const url = new URL(window.location.href);
+  const isAppPath = url.pathname.startsWith('/app') || url.searchParams.get('app') === '1';
+  // Se NÃO for /app, mostramos SEMPRE a landing (corrige Safari mostrando login)
+  const forceMarketing = !isAppPath;
+
+  const [flowState, setFlowState] = useState<AppFlowState>(forceMarketing ? 'landing' : 'login');
   const [user, setUser] = useState<User | null>(null);
   const [profile, setProfile] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(!forceMarketing);
   const [currentPage, setCurrentPage] = useState<Page>('contentGenerator');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
@@ -89,11 +98,9 @@ const App: React.FC = () => {
   };
 
   const ensureProfile = async (u: User): Promise<UserProfile | null> => {
-    // 1) tenta buscar
     const found = await fetchProfile(u);
     if (found) return found;
 
-    // 2) pequeno retry (trigger pode atrasar)
     if (profileTries.current < MAX_PROFILE_TRIES) {
       profileTries.current += 1;
       await new Promise(r => setTimeout(r, 1200));
@@ -101,7 +108,7 @@ const App: React.FC = () => {
       if (again) return again;
     }
 
-    // 3) fallback: tenta inserir (policies precisam permitir)
+    // fallback de INSERT — só vai funcionar se as policies permitirem
     try {
       const planFromReg = (sessionStorage.getItem('selectedPlan') || 'FREE') as UserProfile['plan'];
       const credits = planFromReg === 'PRO' ? 50 : planFromReg === 'AGENCY' ? 150 : 5;
@@ -124,7 +131,6 @@ const App: React.FC = () => {
       console.warn('profiles INSERT fallback exception:', e);
     }
 
-    // 4) falhou: retorna null (app sai do spinner)
     return null;
   };
 
@@ -134,15 +140,14 @@ const App: React.FC = () => {
 
     if (!u) {
       setProfile(null);
-      setFlowState('landing');
+      setFlowState(forceMarketing ? 'landing' : 'login');
       return;
     }
 
     const p = await ensureProfile(u);
     if (!p) {
-      // não desloga em loop; manda para tela segura
       setProfile(null);
-      setFlowState('login'); // ou 'landing'
+      setFlowState('login');
       return;
     }
 
@@ -158,7 +163,9 @@ const App: React.FC = () => {
 
   // --------- boot + listeners ----------
   useEffect(() => {
-    // DEV MODE opcional via ?dev=true
+    // Se estamos na landing (marketing), não mexe com Supabase aqui.
+    if (forceMarketing) return;
+
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('dev') === 'true') {
       console.warn('--- DEV MODE ACTIVATED ---');
@@ -198,11 +205,11 @@ const App: React.FC = () => {
 
         const fullUrl = new URL(window.location.href);
 
-        // Trata erro vindo no fragmento (OAuth com hash)
+        // Trata erro vindo no fragmento (hash)
         if (fullUrl.hash && fullUrl.hash.includes('error=')) {
           const params = new URLSearchParams(fullUrl.hash.replace(/^#/, ''));
           console.error('OAuth error:', params.get('error_description') || 'unknown');
-          history.replaceState(null, '', window.location.pathname + window.location.search);
+          history.replaceState(null, '', fullUrl.pathname + fullUrl.search);
         }
 
         // Troca ?code=... (PKCE) por sessão — apenas uma vez
@@ -215,14 +222,13 @@ const App: React.FC = () => {
               console.error('exchangeCodeForSession error:', error);
             } else {
               sessionStorage.setItem('sb-code-exchanged', '1');
-              history.replaceState(null, '', window.location.pathname); // limpa query
+              history.replaceState(null, '', '/app'); // limpa query e fixa no /app
             }
           } catch (e) {
             console.error('exchangeCodeForSession throw:', e);
           }
         }
 
-        // Pega sessão atual (cobre também #access_token quando detectSessionInUrl=true)
         const { data, error } = await supabase!.auth.getSession();
         if (error) console.error('getSession error:', error);
         await handleSession(data?.session ?? null);
@@ -233,7 +239,6 @@ const App: React.FC = () => {
 
     boot();
 
-    // Ouve refresh/signIn/signOut
     const { data: authListener } = supabase!.auth.onAuthStateChange(async (_event, session) => {
       setLoading(true);
       await handleSession(session);
@@ -243,13 +248,14 @@ const App: React.FC = () => {
     return () => {
       authListener.subscription.unsubscribe();
     };
-  }, []);
+  }, [forceMarketing]);
 
   // --------- actions ----------
   const handleSelectPlan = (planName: string) => {
     setSelectedPlan(planName);
     sessionStorage.setItem('selectedPlan', planName);
-    setFlowState('register');
+    // quando estiver na landing, manda para fluxo do app
+    window.location.href = '/app';
   };
 
   const handlePaymentSuccess = () => {
@@ -261,10 +267,12 @@ const App: React.FC = () => {
 
   const handleRegistrationSuccess = () => setFlowState('payment');
 
-  // ✅ se já estiver autenticado, não manda pra tela de login
   const handleLoginClick = () => {
-    if (user && profile) setFlowState('dashboard');
-    else setFlowState('login');
+    if (forceMarketing) {
+      window.location.href = '/app';
+    } else {
+      setFlowState('login');
+    }
   };
 
   const handleShowContact = () => setFlowState('contact');
@@ -276,22 +284,30 @@ const App: React.FC = () => {
     setCurrentPage('contentGenerator');
     sessionStorage.removeItem('selectedPlan');
     setSelectedPlan(null);
-    if (window.location.search.includes('dev=true')) {
-      window.location.href = window.location.origin + window.location.pathname;
-    } else {
-      setFlowState('landing');
-    }
+    window.location.href = '/'; // volta para landing
   };
 
   // --------- render ----------
+  const MissingAIKey: React.FC = () => (
+    <div className="min-h-screen bg-slate-950 text-gray-200 flex items-center justify-center p-6">
+      <div className="max-w-lg text-center bg-slate-800/60 border border-slate-700 rounded-xl p-8">
+        <h2 className="text-xl font-semibold mb-2">Chave da IA ausente</h2>
+        <p className="text-gray-300">Defina <code>VITE_GEMINI_API_KEY</code> no ambiente de produção (Coolify) para usar os geradores.</p>
+      </div>
+    </div>
+  );
+
   const renderCurrentPage = () => {
     if (!user || !profile) return <LoadingFallback />;
 
+    // Protege páginas que usam IA quando a key não existe
+    const guardAI = (node: React.ReactNode) => (HAS_GEMINI ? node : <MissingAIKey />);
+
     switch (currentPage) {
-      case 'contentGenerator': return <ContentGeneratorPage />;
-      case 'reelsGenerator': return <ReelsGeneratorPage profile={profile} />;
-      case 'blogGenerator': return <BlogGeneratorPage profile={profile} />;
-      case 'videoScriptGenerator': return <VideoScriptGeneratorPage profile={profile} />;
+      case 'contentGenerator': return guardAI(<ContentGeneratorPage />);
+      case 'reelsGenerator': return guardAI(<ReelsGeneratorPage profile={profile} />);
+      case 'blogGenerator': return guardAI(<BlogGeneratorPage profile={profile} />);
+      case 'videoScriptGenerator': return guardAI(<VideoScriptGeneratorPage profile={profile} />);
       case 'commentBot': return <CommentBotPage />;
       case 'history': return <HistoryPage />;
       case 'scheduling': return <SchedulingPage />;
@@ -300,15 +316,25 @@ const App: React.FC = () => {
       case 'apiKeys': return <ApiKeysPage />;
       case 'billing': return <BillingPage />;
       case 'help': return <HelpPage />;
-      default: return <ContentGeneratorPage />;
+      default: return guardAI(<ContentGeneratorPage />);
     }
   };
 
   const renderAppContent = () => {
+    // LANDING sempre que não for /app
+    if (forceMarketing) {
+      return (
+        <LandingPage
+          onSelectPlan={handleSelectPlan}
+          onShowContact={handleShowContact}
+          onLoginClick={handleLoginClick}
+        />
+      );
+    }
+
     if (loading) return <LoadingFallback />;
 
-    // ✅ Prioridade: se tem sessão + profile, mostramos o app (exceto fluxo de pagamento)
-    if (user && profile && flowState !== 'payment') {
+    if (user && profile && flowState === 'dashboard') {
       return (
         <DashboardLayout
           user={user}
@@ -322,8 +348,9 @@ const App: React.FC = () => {
       );
     }
 
-    // sessão existe mas o profile ainda está chegando
-    if (user && !profile) return <LoadingFallback />;
+    if (user && !profile && flowState === 'dashboard') {
+      return <LoadingFallback />;
+    }
 
     if (flowState === 'register' && selectedPlan) {
       return (
@@ -340,17 +367,14 @@ const App: React.FC = () => {
     }
 
     if (flowState === 'payment' && selectedPlan) {
-      return (
-        <PaymentPage
-          planName={selectedPlan}
-          onPaymentSuccess={handlePaymentSuccess}
-          onBack={() => setFlowState('landing')}
-        />
-      );
+      return <PaymentPage planName={selectedPlan} onPaymentSuccess={handlePaymentSuccess} onBack={() => setFlowState('login')} />;
     }
 
-    if (flowState === 'contact') return <ContactPage onBack={() => setFlowState('landing')} />;
+    if (flowState === 'contact') {
+      return <ContactPage onBack={() => setFlowState('login')} />;
+    }
 
+    // Fluxos do /app sem sessão → Login
     if (flowState === 'login') {
       return (
         <LoginPage
@@ -362,13 +386,8 @@ const App: React.FC = () => {
       );
     }
 
-    return (
-      <LandingPage
-        onSelectPlan={handleSelectPlan}
-        onShowContact={handleShowContact}
-        onLoginClick={handleLoginClick}
-      />
-    );
+    // fallback
+    return <LoadingFallback />;
   };
 
   return <Suspense fallback={<LoadingFallback />}>{renderAppContent()}</Suspense>;
