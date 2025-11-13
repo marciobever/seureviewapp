@@ -6,28 +6,25 @@ interface LandingHeroProps {
 
 /* ====================== LOGOS DAS PLATAFORMAS ====================== */
 
-const LogoItem: React.FC<{ label: string; src: string }> = ({ label, src }) => (
-  <div className="flex flex-col items-center justify-center mx-2 md:mx-3 min-w-[80px] md:min-w-[100px]">
+const LogoItem: React.FC<{ src: string; alt: string }> = ({ src, alt }) => (
+  <div className="flex items-center justify-center mx-2 md:mx-3 min-w-[64px] md:min-w-[80px]">
     <img
       src={src}
-      alt={label}
+      alt={alt}
       className="h-10 md:h-12 lg:h-14 w-auto object-contain opacity-80 hover:opacity-100 transform hover:scale-105 transition-all duration-200 drop-shadow-[0_0_18px_rgba(15,23,42,0.95)]"
       loading="lazy"
     />
-    <span className="mt-2 text-[10px] md:text-xs tracking-[0.15em] uppercase text-gray-500 text-center">
-      {label}
-    </span>
   </div>
 );
 
 const LogosRow = () => (
   <>
-    <LogoItem label="Shopee"        src="/shopee-1.svg" />
-    <LogoItem label="Mercado Livre" src="/mercado-livre-logo-vertical-2.svg" />
-    <LogoItem label="AliExpress"    src="/AliExpress-JKfJrGM8_brandlogos.net.svg" />
-    <LogoItem label="Temu"          src="/temu-logo.svg" />
-    <LogoItem label="Shein"         src="/shein-1.svg" />
-    <LogoItem label="Amazon"        src="/amazon-icon-seeklogo.svg" />
+    <LogoItem src="/shopee-1.svg" alt="Shopee" />
+    <LogoItem src="/mercado-livre-logo-vertical-2.svg" alt="Mercado Livre" />
+    <LogoItem src="/AliExpress-JKfJrGM8_brandlogos.net.svg" alt="AliExpress" />
+    <LogoItem src="/temu-logo.svg" alt="Temu" />
+    <LogoItem src="/shein-1.svg" alt="Shein" />
+    <LogoItem src="/amazon-icon-seeklogo.svg" alt="Amazon" />
   </>
 );
 
@@ -35,16 +32,16 @@ const PartnersBanner: React.FC = () => {
   return (
     <section className="mt-6">
       <div className="container mx-auto px-4">
-        <h3 className="text-center text-gray-500 font-semibold uppercase tracking-[0.35em] mb-5 text-[0.65rem] md:text-xs">
+        <h3 className="text-center text-gray-500 font-semibold uppercase tracking-[0.35em] mb-4 text-[0.65rem] md:text-xs">
           Compatível com as Maiores Plataformas
         </h3>
         <div className="scroller w-full overflow-hidden">
           <div
-            className="scroller-inner flex items-center py-3"
-            style={{ gap: '1.5rem' }} // ícones mais próximos
+            className="scroller-inner flex items-center py-2"
+            style={{ gap: '1.5rem' }}
           >
             <LogosRow />
-            <LogosRow /> {/* duplica pra criar efeito de carrossel infinito */}
+            <LogosRow />
           </div>
         </div>
       </div>
@@ -146,9 +143,9 @@ export const Hero: React.FC<LandingHeroProps> = ({ onCTAClick }) => {
         </h1>
 
         <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-8">
-          Pare de perder tempo. Gere posts virais, artigos de blog otimizados para
-          SEO, roteiros para vídeos, imagens de marketing e automatize suas redes
-          sociais, tudo em um só lugar.
+          Pare de perder tempo. Gere posts virais, artigos de blog otimizados para SEO,
+          roteiros para vídeos, imagens de marketing e automatize suas redes sociais,
+          tudo em um só lugar.
         </p>
 
         <div className="flex flex-wrap justify-center items-center gap-3 mb-10">
