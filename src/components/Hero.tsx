@@ -7,9 +7,8 @@ const AmazonLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-10 w-auto md:h-12 lg:h-14 flex-shrink-0"
+    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
   >
-    {/* “sorriso” + seta genérico da Amazon */}
     <path
       d="M7 9.5C7 6.8 8.9 5 11.6 5c2.6 0 4.3 1.5 4.3 3.9v4.2c0 .4-.3.7-.7.7h-1.1c-.4 0-.7-.3-.7-.7v-.4c-.6.8-1.5 1.2-2.6 1.2-2 0-3.8-1.4-3.8-3.9zm6.2.1c0-1.2-.8-2-2-2-1.2 0-2 0.9-2 2.1 0 1.3.8 2.1 2 2.1 1.2 0 2-.9 2-2.2z"
       fill="currentColor"
@@ -30,14 +29,12 @@ const ShopeeLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-10 w-auto md:h-12 lg:h-14 flex-shrink-0"
+    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
   >
-    {/* sacola + alça */}
     <path
       d="M9.5 7V6.5A2.5 2.5 0 0 1 12 4a2.5 2.5 0 0 1 2.5 2.5V7h1.8c.4 0 .7.3.7.7l-.8 8.3a1.5 1.5 0 0 1-1.5 1.4H7.3a1.5 1.5 0 0 1-1.5-1.4L5 7.7c0-.4.3-.7.7-.7zm1.5 0h2V6.5c0-.6-.4-1-1-1-.6 0-1 .4-1 1z"
       fill="currentColor"
     />
-    {/* “S” estilizado */}
     <path
       d="M10 11.2c0-.6.4-1 1-1h2c.6 0 1 .4 1 1s-.4 1-1 1h-1v.3c.6.1 1 .5 1 1.1 0 .7-.6 1.3-1.5 1.3H10v-1.2h1.4c.2 0 .3-.1.3-.2 0-.1-.1-.2-.3-.2H11c-.6 0-1-.4-1-1z"
       fill="currentColor"
@@ -50,9 +47,8 @@ const MercadoLivreLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-9 w-auto md:h-11 lg:h-13 flex-shrink-0"
+    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
   >
-    {/* elipse + "aperto de mãos" genérico */}
     <ellipse
       cx="12"
       cy="12"
@@ -78,9 +74,8 @@ const AliexpressLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-10 w-auto md:h-12 lg:h-14 flex-shrink-0"
+    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
   >
-    {/* retângulo com sorriso */}
     <rect
       x="5.5"
       y="6.5"
@@ -106,9 +101,8 @@ const TemuLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-9 w-auto md:h-11 lg:h-13 flex-shrink-0"
+    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
   >
-    {/* “T” blocado */}
     <rect
       x="5"
       y="7"
@@ -134,9 +128,8 @@ const SheinLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-10 w-auto md:h-12 lg:h-14 flex-shrink-0"
+    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
   >
-    {/* “S” simples */}
     <path
       d="M8.5 8.2c.6-.5 1.5-.9 2.7-.9 1.8 0 3 .8 3 2.2 0 1.2-.8 1.8-2.3 2L11 11.7c-.8.1-1.2.3-1.2.7 0 .4.4.7 1.1.7.7 0 1.3-.2 1.9-.7l1.1 1.4c-.8.7-1.9 1.1-3.1 1.1-2 0-3.3-1-3.3-2.5 0-1.2.8-1.9 2.3-2.1l1-.1c.8-.1 1.2-.3 1.2-.7 0-.4-.4-.6-1-.6-.7 0-1.3.2-1.9.7z"
       fill="currentColor"
@@ -149,7 +142,7 @@ const LogoItem: React.FC<{ label: string; children: React.ReactNode }> = ({
   label,
   children,
 }) => (
-  <div className="flex flex-col items-center justify-center mx-6 min-w-[90px]">
+  <div className="flex flex-col items-center justify-center mx-3 md:mx-4 min-w-[80px] md:min-w-[96px]">
     <div className="text-gray-200 opacity-80 hover:opacity-100 transform hover:scale-105 transition-all duration-200 drop-shadow-[0_0_12px_rgba(15,23,42,0.9)]">
       {children}
     </div>
@@ -182,7 +175,7 @@ const LogosRow = () => (
   </>
 );
 
-// Banner de parceiros com scroller (usa .scroller / .scroller-inner do index.html)
+// Banner de parceiros com scroller
 const PartnersBanner: React.FC = () => {
   return (
     <section className="mt-8">
@@ -191,7 +184,10 @@ const PartnersBanner: React.FC = () => {
           Compatível com as Maiores Plataformas
         </h3>
         <div className="scroller w-full overflow-hidden">
-          <div className="scroller-inner flex items-center py-3">
+          <div
+            className="scroller-inner flex items-center py-4"
+            style={{ gap: '1.4rem' }} // controla o espaçamento horizontal real
+          >
             <LogosRow />
             <LogosRow />
           </div>
