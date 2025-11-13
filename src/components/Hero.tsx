@@ -1,152 +1,20 @@
 import React from 'react';
 
-// ==== LOGOS DAS PLATAFORMAS ===================================
+interface LandingHeroProps {
+  onCTAClick: () => void;
+}
 
-const AmazonLogo = () => (
-  <svg
-    role="img"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
-  >
-    <path
-      d="M7 9.5C7 6.8 8.9 5 11.6 5c2.6 0 4.3 1.5 4.3 3.9v4.2c0 .4-.3.7-.7.7h-1.1c-.4 0-.7-.3-.7-.7v-.4c-.6.8-1.5 1.2-2.6 1.2-2 0-3.8-1.4-3.8-3.9zm6.2.1c0-1.2-.8-2-2-2-1.2 0-2 0.9-2 2.1 0 1.3.8 2.1 2 2.1 1.2 0 2-.9 2-2.2z"
-      fill="currentColor"
-    />
-    <path
-      d="M6 17.5c0-.3.3-.6.6-.5 4.1 1.3 6.7 1.1 10.7-.3.3-.1.6.1.6.4 0 .2-.1.4-.3.5-4.2 2.4-7.6 2.6-11.3.9-.2-.1-.3-.3-.3-.5z"
-      fill="currentColor"
-    />
-    <path
-      d="M17.2 17.3c-.1-.2 0-.5.3-.6l1.7-.5c.3-.1.6.2.6.5 0 .9-.5 1.7-1.3 2-.3.2-.6 0-.7-.3z"
-      fill="currentColor"
-    />
-  </svg>
-);
+/* ====================== LOGOS DAS PLATAFORMAS ====================== */
 
-const ShopeeLogo = () => (
-  <svg
-    role="img"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
-  >
-    <path
-      d="M9.5 7V6.5A2.5 2.5 0 0 1 12 4a2.5 2.5 0 0 1 2.5 2.5V7h1.8c.4 0 .7.3.7.7l-.8 8.3a1.5 1.5 0 0 1-1.5 1.4H7.3a1.5 1.5 0 0 1-1.5-1.4L5 7.7c0-.4.3-.7.7-.7zm1.5 0h2V6.5c0-.6-.4-1-1-1-.6 0-1 .4-1 1z"
-      fill="currentColor"
+const LogoItem: React.FC<{ label: string; src: string }> = ({ label, src }) => (
+  <div className="flex flex-col items-center justify-center mx-2 md:mx-3 min-w-[80px] md:min-w-[100px]">
+    <img
+      src={src}
+      alt={label}
+      className="h-10 md:h-12 lg:h-14 w-auto object-contain opacity-80 hover:opacity-100 transform hover:scale-105 transition-all duration-200 drop-shadow-[0_0_18px_rgba(15,23,42,0.95)]"
+      loading="lazy"
     />
-    <path
-      d="M10 11.2c0-.6.4-1 1-1h2c.6 0 1 .4 1 1s-.4 1-1 1h-1v.3c.6.1 1 .5 1 1.1 0 .7-.6 1.3-1.5 1.3H10v-1.2h1.4c.2 0 .3-.1.3-.2 0-.1-.1-.2-.3-.2H11c-.6 0-1-.4-1-1z"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-const MercadoLivreLogo = () => (
-  <svg
-    role="img"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
-  >
-    <ellipse
-      cx="12"
-      cy="12"
-      rx="7"
-      ry="4.2"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-    />
-    <path
-      d="M8.5 11.5 10 13l1.5-1.5L13 13l1.5-1.5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-      strokeLinejoin="round"
-    />
-  </svg>
-);
-
-const AliexpressLogo = () => (
-  <svg
-    role="img"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
-  >
-    <rect
-      x="5.5"
-      y="6.5"
-      width="13"
-      height="11"
-      rx="2"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-    />
-    <path
-      d="M8 12.5c.6.8 1.6 1.3 2.6 1.3s2-.5 2.6-1.3"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const TemuLogo = () => (
-  <svg
-    role="img"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
-  >
-    <rect
-      x="5"
-      y="7"
-      width="14"
-      height="10"
-      rx="2"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-    />
-    <path
-      d="M9 9.5h6M12 9.5v5"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.3"
-      strokeLinecap="round"
-    />
-  </svg>
-);
-
-const SheinLogo = () => (
-  <svg
-    role="img"
-    viewBox="0 0 24 24"
-    xmlns="http://www.w3.org/2000/svg"
-    className="w-12 h-12 md:w-14 md:h-14 lg:w-16 lg:h-16 flex-shrink-0"
-  >
-    <path
-      d="M8.5 8.2c.6-.5 1.5-.9 2.7-.9 1.8 0 3 .8 3 2.2 0 1.2-.8 1.8-2.3 2L11 11.7c-.8.1-1.2.3-1.2.7 0 .4.4.7 1.1.7.7 0 1.3-.2 1.9-.7l1.1 1.4c-.8.7-1.9 1.1-3.1 1.1-2 0-3.3-1-3.3-2.5 0-1.2.8-1.9 2.3-2.1l1-.1c.8-.1 1.2-.3 1.2-.7 0-.4-.4-.6-1-.6-.7 0-1.3.2-1.9.7z"
-      fill="currentColor"
-    />
-  </svg>
-);
-
-// item com logo grande + label embaixo
-const LogoItem: React.FC<{ label: string; children: React.ReactNode }> = ({
-  label,
-  children,
-}) => (
-  <div className="flex flex-col items-center justify-center mx-3 md:mx-4 min-w-[80px] md:min-w-[96px]">
-    <div className="text-gray-200 opacity-80 hover:opacity-100 transform hover:scale-105 transition-all duration-200 drop-shadow-[0_0_12px_rgba(15,23,42,0.9)]">
-      {children}
-    </div>
-    <span className="mt-2 text-[11px] md:text-xs tracking-wide uppercase text-gray-500">
+    <span className="mt-2 text-[10px] md:text-xs tracking-[0.15em] uppercase text-gray-500 text-center">
       {label}
     </span>
   </div>
@@ -154,42 +22,29 @@ const LogoItem: React.FC<{ label: string; children: React.ReactNode }> = ({
 
 const LogosRow = () => (
   <>
-    <LogoItem label="Amazon">
-      <AmazonLogo />
-    </LogoItem>
-    <LogoItem label="Shopee">
-      <ShopeeLogo />
-    </LogoItem>
-    <LogoItem label="Mercado Livre">
-      <MercadoLivreLogo />
-    </LogoItem>
-    <LogoItem label="AliExpress">
-      <AliexpressLogo />
-    </LogoItem>
-    <LogoItem label="Temu">
-      <TemuLogo />
-    </LogoItem>
-    <LogoItem label="Shein">
-      <SheinLogo />
-    </LogoItem>
+    <LogoItem label="Shopee"        src="/shopee-1.svg" />
+    <LogoItem label="Mercado Livre" src="/mercado-livre-logo-vertical-2.svg" />
+    <LogoItem label="AliExpress"    src="/AliExpress-JKfJrGM8_brandlogos.net.svg" />
+    <LogoItem label="Temu"          src="/temu-logo.svg" />
+    <LogoItem label="Shein"         src="/shein-1.svg" />
+    <LogoItem label="Amazon"        src="/amazon-icon-seeklogo.svg" />
   </>
 );
 
-// Banner de parceiros com scroller
 const PartnersBanner: React.FC = () => {
   return (
-    <section className="mt-8">
+    <section className="mt-6">
       <div className="container mx-auto px-4">
-        <h3 className="text-center text-gray-500 font-semibold uppercase tracking-[0.35em] mb-6 text-[0.65rem] md:text-xs">
+        <h3 className="text-center text-gray-500 font-semibold uppercase tracking-[0.35em] mb-5 text-[0.65rem] md:text-xs">
           Compatível com as Maiores Plataformas
         </h3>
         <div className="scroller w-full overflow-hidden">
           <div
-            className="scroller-inner flex items-center py-4"
-            style={{ gap: '1.4rem' }} // controla o espaçamento horizontal real
+            className="scroller-inner flex items-center py-3"
+            style={{ gap: '1.5rem' }} // ícones mais próximos
           >
             <LogosRow />
-            <LogosRow />
+            <LogosRow /> {/* duplica pra criar efeito de carrossel infinito */}
           </div>
         </div>
       </div>
@@ -197,11 +52,7 @@ const PartnersBanner: React.FC = () => {
   );
 };
 
-// ==== HERO PRINCIPAL =====================================================
-
-interface LandingHeroProps {
-  onCTAClick: () => void;
-}
+/* ====================== ICONES DOS PILLS ====================== */
 
 const PostIcon = () => (
   <svg
@@ -271,6 +122,8 @@ const ImageIcon = () => (
   </svg>
 );
 
+/* ====================== PILLS ====================== */
+
 const FeaturePill: React.FC<{ icon: React.ReactNode; label: string }> = ({
   icon,
   label,
@@ -281,18 +134,21 @@ const FeaturePill: React.FC<{ icon: React.ReactNode; label: string }> = ({
   </div>
 );
 
+/* ====================== HERO ====================== */
+
 export const Hero: React.FC<LandingHeroProps> = ({ onCTAClick }) => {
   return (
-    <section className="min-h-[calc(100vh-5rem)] flex flex-col justify-center text-center">
+    <section className="min-h-[calc(100vh-5rem)] flex flex-col justify-center text-center pt-16 md:pt-20 lg:pt-24">
       <div className="container mx-auto px-4 animate-fade-in-up flex-grow flex flex-col justify-center items-center">
         <h1 className="text-4xl md:text-6xl font-extrabold text-white mb-6 leading-tight text-glow">
           A Central de Conteúdo IA que <br />
           Transforma <span className="text-orange-400">Cliques em Comissões</span>
         </h1>
+
         <p className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-8">
-          Pare de perder tempo. Gere posts virais, artigos de blog otimizados
-          para SEO, roteiros para vídeos, imagens de marketing e automatize
-          suas redes sociais, tudo em um só lugar.
+          Pare de perder tempo. Gere posts virais, artigos de blog otimizados para
+          SEO, roteiros para vídeos, imagens de marketing e automatize suas redes
+          sociais, tudo em um só lugar.
         </p>
 
         <div className="flex flex-wrap justify-center items-center gap-3 mb-10">
