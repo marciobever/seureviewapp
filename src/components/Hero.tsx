@@ -7,7 +7,7 @@ const AmazonLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-8 w-auto flex-shrink-0"
+    className="h-10 w-auto md:h-12 lg:h-14 flex-shrink-0"
   >
     {/* “sorriso” + seta genérico da Amazon */}
     <path
@@ -30,7 +30,7 @@ const ShopeeLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-8 w-auto flex-shrink-0"
+    className="h-10 w-auto md:h-12 lg:h-14 flex-shrink-0"
   >
     {/* sacola + alça */}
     <path
@@ -50,7 +50,7 @@ const MercadoLivreLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-7 w-auto flex-shrink-0"
+    className="h-9 w-auto md:h-11 lg:h-13 flex-shrink-0"
   >
     {/* elipse + "aperto de mãos" genérico */}
     <ellipse
@@ -78,7 +78,7 @@ const AliexpressLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-8 w-auto flex-shrink-0"
+    className="h-10 w-auto md:h-12 lg:h-14 flex-shrink-0"
   >
     {/* retângulo com sorriso */}
     <rect
@@ -106,7 +106,7 @@ const TemuLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-6 w-auto flex-shrink-0"
+    className="h-9 w-auto md:h-11 lg:h-13 flex-shrink-0"
   >
     {/* “T” blocado */}
     <rect
@@ -134,7 +134,7 @@ const SheinLogo = () => (
     role="img"
     viewBox="0 0 24 24"
     xmlns="http://www.w3.org/2000/svg"
-    className="h-8 w-auto flex-shrink-0"
+    className="h-10 w-auto md:h-12 lg:h-14 flex-shrink-0"
   >
     {/* “S” simples */}
     <path
@@ -144,14 +144,41 @@ const SheinLogo = () => (
   </svg>
 );
 
-const Logos = () => (
+// item com logo grande + label embaixo
+const LogoItem: React.FC<{ label: string; children: React.ReactNode }> = ({
+  label,
+  children,
+}) => (
+  <div className="flex flex-col items-center justify-center mx-6 min-w-[90px]">
+    <div className="text-gray-200 opacity-80 hover:opacity-100 transform hover:scale-105 transition-all duration-200 drop-shadow-[0_0_12px_rgba(15,23,42,0.9)]">
+      {children}
+    </div>
+    <span className="mt-2 text-[11px] md:text-xs tracking-wide uppercase text-gray-500">
+      {label}
+    </span>
+  </div>
+);
+
+const LogosRow = () => (
   <>
-    <AmazonLogo />
-    <ShopeeLogo />
-    <MercadoLivreLogo />
-    <AliexpressLogo />
-    <TemuLogo />
-    <SheinLogo />
+    <LogoItem label="Amazon">
+      <AmazonLogo />
+    </LogoItem>
+    <LogoItem label="Shopee">
+      <ShopeeLogo />
+    </LogoItem>
+    <LogoItem label="Mercado Livre">
+      <MercadoLivreLogo />
+    </LogoItem>
+    <LogoItem label="AliExpress">
+      <AliexpressLogo />
+    </LogoItem>
+    <LogoItem label="Temu">
+      <TemuLogo />
+    </LogoItem>
+    <LogoItem label="Shein">
+      <SheinLogo />
+    </LogoItem>
   </>
 );
 
@@ -160,13 +187,13 @@ const PartnersBanner: React.FC = () => {
   return (
     <section className="mt-8">
       <div className="container mx-auto px-4">
-        <h3 className="text-center text-gray-500 font-semibold uppercase tracking-[0.35em] mb-6 text-xs sm:text-sm">
+        <h3 className="text-center text-gray-500 font-semibold uppercase tracking-[0.35em] mb-6 text-[0.65rem] md:text-xs">
           Compatível com as Maiores Plataformas
         </h3>
         <div className="scroller w-full overflow-hidden">
-          <div className="scroller-inner text-gray-400 items-center">
-            <Logos />
-            <Logos />
+          <div className="scroller-inner flex items-center py-3">
+            <LogosRow />
+            <LogosRow />
           </div>
         </div>
       </div>
