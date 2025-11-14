@@ -240,24 +240,34 @@ const App: React.FC = () => {
 
         const fullUrl = new URL(window.location.href);
 
+        // Trata erro vindo no fragmento (hash)
         if (fullUrl.hash && fullUrl.hash.includes('error=')) {
           const params = new URLSearchParams(fullUrl.hash.replace(/^#/, ''));
           console.error('OAuth error:', params.get('error_description') || 'unknown');
           history.replaceState(null, '', fullUrl.pathname + fullUrl.search);
         }
 
+        // PKCE: troca ?code=... por sessão (apenas uma vez)
+        const code = fullUrl.searchParams.get('code');
+        const exchanged = sessionStorage.getItem('sb-code-exchanged') === '1';
+        if (code && !exchanged) {
+          try {
+            const { error: exchError } = await supabase!.auth.exchangeCodeForSession(code);
+            if (exchError) {
+              console.error('exchangeCodeForSession error:', exchError);
+            } else {
+              sessionStorage.setItem('sb-code-exchanged', '1');
+              history.replaceState(null, '', '/app');
+            }
+          } catch (e) {
+            console.error('exchangeCodeForSession throw:', e);
+          }
+        }
+
         const { data, error } = await supabase!.auth.getSession();
 
         if (error) {
           console.error('getSession error:', error);
-          const msg = (error as any)?.message || '';
-          if (msg.includes('Refresh Token')) {
-            try {
-              await supabase!.auth.signOut();
-            } catch (e) {
-              console.warn('signOut after invalid refresh token failed:', e);
-            }
-          }
           if (!cancelled) {
             setUser(null);
             setProfile(null);
@@ -274,19 +284,11 @@ const App: React.FC = () => {
     boot();
 
     const { data: authListener } = supabase!.auth.onAuthStateChange(
-      async (event, session) => {
+      async (_event, session) => {
         try {
-          if (event === 'TOKEN_REFRESHED') {
-            await handleSession(session);
-            return;
-          }
-
-          setLoading(true);
           await handleSession(session);
         } catch (e) {
           console.error('onAuthStateChange handleSession error:', e);
-        } finally {
-          setLoading(false);
         }
       }
     );
@@ -418,7 +420,6 @@ const App: React.FC = () => {
         <LoginPage
           onGoToRegister={() => {
             if (!selectedPlan) setSelectedPlan('PRO');
-            setSelectedPlan('PRO');
             setFlowState('register');
           }}
         />
