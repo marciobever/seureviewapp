@@ -22,7 +22,7 @@ export const searchProductOptions = async (
     throw new Error("Product query is required.");
   }
 
-  // --- fluxo Shopee via n8n continua funcionando normalmente ---
+  // --- fluxo Shopee via n8n ---
   if (provider === "Shopee") {
     try {
       const {
@@ -79,8 +79,7 @@ export const searchProductOptions = async (
 
       const json = await response.json();
 
-      // Se seu n8n já retorna direto um array de produtos, adapte aqui.
-      // Vou assumir que ele retorna algo como { items: [...] }.
+      // n8n pode retornar array direto ou { items: [...] }
       const items = Array.isArray(json)
         ? json
         : Array.isArray(json.items)
@@ -111,7 +110,6 @@ export const searchProductOptions = async (
           ? `${p.vendas} vendidos`
           : "",
         productUrl: p.url ?? p.canonicalUrl ?? p.product_link ?? "",
-        // se seu ProductOption tiver mais campos, adicione aqui
       }));
 
       return products;
@@ -158,20 +156,21 @@ export const generatePostForProduct = async (
   // Chama o webhook que gera shortlink + salva/agenda no n8n
   const webhookUrl = "https://n8n.seureview.com.br/webhook/shopee_subids";
 
+  const priceNumber = (() => {
+    const match = String(product.price)
+      .replace(/[^\d,]/g, "")
+      .replace(",", ".");
+    const n = Number(match);
+    return Number.isFinite(n) ? n : undefined;
+  })();
+
   const body = {
     base_url: product.productUrl,
-    platform: "instagram", // ou deixe dinâmico depois (instagram/facebook/etc)
+    platform: "instagram", // depois dá pra deixar dinâmico (instagram/facebook/etc)
     product: {
-      id: undefined, // se tiver id interno aí no ProductOption, jogue aqui
+      id: undefined, // se tiver id interno no ProductOption, joga aqui
       title: product.productName,
-      // tentar extrair número do price
-      price: (() => {
-        const match = String(product.price)
-          .replace(/[^\d,]/g, "")
-          .replace(",", ".");
-        const n = Number(match);
-        return Number.isFinite(n) ? n : undefined;
-      })(),
+      price: priceNumber,
       rating: product.rating,
       image: product.imageUrl,
       url: product.productUrl,
@@ -208,7 +207,6 @@ export const generatePostForProduct = async (
   const affiliateUrl: string =
     firstItem?.url || firstItem?.links?.instagram || product.productUrl;
 
-  // Monta um PostContent simples só pra UI funcionar
   const socialPostTitle = `Oferta Shopee: ${product.productName}`;
   const callToAction = "Clique no link e aproveite essa oferta exclusiva!";
 
@@ -218,7 +216,7 @@ export const generatePostForProduct = async (
     product.price ? `💰 Preço: ${product.price}` : "",
     product.rating ? `⭐ Avaliação: ${product.rating.toFixed(1)} / 5` : "",
     "",
-    `${callToAction}`,
+    callToAction,
     affiliateUrl ? `👉 ${affiliateUrl}` : "",
     "",
     "#Shopee #Oferta #Promoção #Achadinhos",
@@ -235,7 +233,7 @@ export const generatePostForProduct = async (
         "• Qualidade incrível pelo melhor preço",
         "• Perfeito para o seu dia a dia",
         "",
-        `${callToAction}`,
+        callToAction,
         affiliateUrl ? `👉 ${affiliateUrl}` : "",
         "",
         "#Shopee #Achadinhos #Benefícios",
@@ -250,7 +248,7 @@ export const generatePostForProduct = async (
         "",
         "Não deixe para depois, as melhores ofertas acabam rápido.",
         "",
-        `${callToAction}`,
+        callToAction,
         affiliateUrl ? `👉 ${affiliateUrl}` : "",
         "",
         "#Promoção #SóHoje #CorreAproveitar",
@@ -265,7 +263,7 @@ export const generatePostForProduct = async (
         "",
         "Avaliações positivas e muitos pedidos entregues. Se tanta gente aprovou, tem um motivo 😉",
         "",
-        `${callToAction}`,
+        callToAction,
         affiliateUrl ? `👉 ${affiliateUrl}` : "",
         "",
         "#ProvaSocial #MaisVendidos #ShopeeBrasil",
@@ -290,8 +288,7 @@ export const generatePostForProduct = async (
 };
 
 /**
- * As funções abaixo continuam stubadas: não chamam IA.
- * Assim o app compila/roda, mas você não depende de chave nenhuma.
+ * Funções abaixo ainda são stubs (IA desativada).
  */
 
 export const generateReelsVideo = async (
@@ -314,7 +311,6 @@ export const getOptimizationSuggestions = async (
   _title: string,
   _body: string
 ): Promise<string[]> => {
-  // Stub bonitinho pra UI não quebrar
   return [
     "Otimize o primeiro parágrafo com um gancho mais forte.",
     "Destaque um benefício concreto logo no começo.",
@@ -336,14 +332,5 @@ export const generateVideoScript = async (
 ): Promise<VideoScript> => {
   throw new Error(
     "Gerador de roteiros de vídeo ainda não está configurado (IA desativada)."
-  );
-};
-
-export const compareProducts = async (
-  _product1: ProductOption,
-  _product2: ProductOption
-): Promise<string> => {
-  throw new Error(
-    "Comparador de produtos ainda não está configurado (IA desativada)."
   );
 };
