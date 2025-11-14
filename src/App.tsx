@@ -1,26 +1,26 @@
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { supabase, supabaseConfigured } from './services/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
-// Imports diretos (sem lazy / Suspense)
-import { LandingPage } from './components/LandingPage';
-import { LoginPage } from './components/LoginPage';
-import { RegistrationPage } from '../components/RegistrationPage';
-import { DashboardLayout } from './components/DashboardLayout';
-import { ContentGeneratorPage } from './components/ContentGeneratorPage';
-import { ReelsGeneratorPage } from '../components/ReelsGeneratorPage';
-import { CommentBotPage } from './components/CommentBotPage';
-import { HistoryPage } from './components/HistoryPage';
-import { ProfilePage } from '../components/ProfilePage';
-import { ApiKeysPage } from './components/ApiKeysPage';
-import { BillingPage } from './components/BillingPage';
-import { PaymentPage } from '../components/PaymentPage';
-import { HelpPage } from './components/HelpPage';
-import { ContactPage } from './components/ContactPage';
-import { SchedulingPage } from '../components/SchedulingPage';
-import { BlogGeneratorPage } from './components/BlogGeneratorPage';
-import { VideoScriptGeneratorPage } from '../components/VideoScriptGeneratorPage';
-import { CampaignsPage } from './components/CampaignsPage';
+// Lazy load components
+const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
+const LoginPage = lazy(() => import('./components/LoginPage').then(m => ({ default: m.LoginPage })));
+const RegistrationPage = lazy(() => import('../components/RegistrationPage').then(m => ({ default: m.RegistrationPage })));
+const DashboardLayout = lazy(() => import('./components/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
+const ContentGeneratorPage = lazy(() => import('./components/ContentGeneratorPage').then(m => ({ default: m.ContentGeneratorPage })));
+const ReelsGeneratorPage = lazy(() => import('../components/ReelsGeneratorPage').then(m => ({ default: m.ReelsGeneratorPage })));
+const CommentBotPage = lazy(() => import('./components/CommentBotPage').then(m => ({ default: m.CommentBotPage })));
+const HistoryPage = lazy(() => import('./components/HistoryPage').then(m => ({ default: m.HistoryPage })));
+const ProfilePage = lazy(() => import('../components/ProfilePage').then(m => ({ default: m.ProfilePage })));
+const ApiKeysPage = lazy(() => import('./components/ApiKeysPage').then(m => ({ default: m.ApiKeysPage })));
+const BillingPage = lazy(() => import('./components/BillingPage').then(m => ({ default: m.BillingPage })));
+const PaymentPage = lazy(() => import('../components/PaymentPage').then(m => ({ default: m.PaymentPage })));
+const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
+const ContactPage = lazy(() => import('./components/ContactPage').then(m => ({ default: m.ContactPage })));
+const SchedulingPage = lazy(() => import('../components/SchedulingPage').then(m => ({ default: m.SchedulingPage })));
+const BlogGeneratorPage = lazy(() => import('./components/BlogGeneratorPage').then(m => ({ default: m.BlogGeneratorPage })));
+const VideoScriptGeneratorPage = lazy(() => import('../components/VideoScriptGeneratorPage').then(m => ({ default: m.VideoScriptGeneratorPage })));
+const CampaignsPage = lazy(() => import('./components/CampaignsPage').then(m => ({ default: m.CampaignsPage })));
 
 export type Page =
   | 'contentGenerator' | 'reelsGenerator' | 'commentBot' | 'history'
@@ -59,8 +59,8 @@ const SupabaseConfigError: React.FC = () => (
   </div>
 );
 
-// (por enquanto não usamos HAS_GEMINI pra não travar nada por falta de env)
-// const HAS_GEMINI = !!(import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+// ====== helpers de ambiente (evita quebrar se faltar a key de IA) ======
+const HAS_GEMINI = !!(import.meta as any)?.env?.VITE_GEMINI_API_KEY;
 
 const App: React.FC = () => {
   if (!supabaseConfigured) return <SupabaseConfigError />;
@@ -199,8 +199,6 @@ const App: React.FC = () => {
     const storedPlan = sessionStorage.getItem('selectedPlan');
     if (storedPlan) setSelectedPlan(storedPlan);
 
-    let cancelled = false;
-
     const boot = async () => {
       try {
         setLoading(true);
@@ -214,35 +212,40 @@ const App: React.FC = () => {
           history.replaceState(null, '', fullUrl.pathname + fullUrl.search);
         }
 
-        const { data, error } = await supabase!.auth.getSession();
-        if (error) {
-          console.error('getSession error:', error);
-        } else if (!cancelled) {
-          await handleSession(data?.session ?? null);
+        // Troca ?code=... (PKCE) por sessão — apenas uma vez
+        const code = fullUrl.searchParams.get('code');
+        const exchanged = sessionStorage.getItem('sb-code-exchanged') === '1';
+        if (code && !exchanged) {
+          try {
+            const { error } = await supabase!.auth.exchangeCodeForSession(code);
+            if (error) {
+              console.error('exchangeCodeForSession error:', error);
+            } else {
+              sessionStorage.setItem('sb-code-exchanged', '1');
+              history.replaceState(null, '', '/app'); // limpa query e fixa no /app
+            }
+          } catch (e) {
+            console.error('exchangeCodeForSession throw:', e);
+          }
         }
+
+        const { data, error } = await supabase!.auth.getSession();
+        if (error) console.error('getSession error:', error);
+        await handleSession(data?.session ?? null);
       } finally {
-        if (!cancelled) setLoading(false);
+        setLoading(false);
       }
     };
 
     boot();
 
-    const { data: authListener } = supabase!.auth.onAuthStateChange(
-      async (event, session) => {
-        try {
-          if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
-            await handleSession(session);
-            return;
-          }
-          await handleSession(session);
-        } catch (e) {
-          console.error('onAuthStateChange handleSession error:', e);
-        }
-      }
-    );
+    const { data: authListener } = supabase!.auth.onAuthStateChange(async (_event, session) => {
+      setLoading(true);
+      await handleSession(session);
+      setLoading(false);
+    });
 
     return () => {
-      cancelled = true;
       authListener.subscription.unsubscribe();
     };
   }, [forceMarketing]);
@@ -251,6 +254,7 @@ const App: React.FC = () => {
   const handleSelectPlan = (planName: string) => {
     setSelectedPlan(planName);
     sessionStorage.setItem('selectedPlan', planName);
+    // quando estiver na landing, manda para fluxo do app
     window.location.href = '/app';
   };
 
@@ -280,52 +284,39 @@ const App: React.FC = () => {
     setCurrentPage('contentGenerator');
     sessionStorage.removeItem('selectedPlan');
     setSelectedPlan(null);
-    window.location.href = '/';
+    window.location.href = '/'; // volta para landing
   };
 
   // --------- render ----------
+  const MissingAIKey: React.FC = () => (
+    <div className="min-h-screen bg-slate-950 text-gray-200 flex items-center justify-center p-6">
+      <div className="max-w-lg text-center bg-slate-800/60 border border-slate-700 rounded-xl p-8">
+        <h2 className="text-xl font-semibold mb-2">Chave da IA ausente</h2>
+        <p className="text-gray-300">Defina <code>VITE_GEMINI_API_KEY</code> no ambiente de produção (Coolify) para usar os geradores.</p>
+      </div>
+    </div>
+  );
+
   const renderCurrentPage = () => {
     if (!user || !profile) return <LoadingFallback />;
 
+    // Protege páginas que usam IA quando a key não existe
+    const guardAI = (node: React.ReactNode) => (HAS_GEMINI ? node : <MissingAIKey />);
+
     switch (currentPage) {
-      case 'contentGenerator':
-        return <ContentGeneratorPage />;
-
-      case 'reelsGenerator':
-        return <ReelsGeneratorPage profile={profile} />;
-
-      case 'blogGenerator':
-        return <BlogGeneratorPage profile={profile} />;
-
-      case 'videoScriptGenerator':
-        return <VideoScriptGeneratorPage profile={profile} />;
-
-      case 'commentBot':
-        return <CommentBotPage />;
-
-      case 'history':
-        return <HistoryPage />;
-
-      case 'scheduling':
-        return <SchedulingPage />;
-
-      case 'campaigns':
-        return <CampaignsPage />;
-
-      case 'profile':
-        return <ProfilePage user={user} profile={profile} />;
-
-      case 'apiKeys':
-        return <ApiKeysPage />;
-
-      case 'billing':
-        return <BillingPage />;
-
-      case 'help':
-        return <HelpPage />;
-
-      default:
-        return <ContentGeneratorPage />;
+      case 'contentGenerator': return guardAI(<ContentGeneratorPage />);
+      case 'reelsGenerator': return guardAI(<ReelsGeneratorPage profile={profile} />);
+      case 'blogGenerator': return guardAI(<BlogGeneratorPage profile={profile} />);
+      case 'videoScriptGenerator': return guardAI(<VideoScriptGeneratorPage profile={profile} />);
+      case 'commentBot': return <CommentBotPage />;
+      case 'history': return <HistoryPage />;
+      case 'scheduling': return <SchedulingPage />;
+      case 'campaigns': return <CampaignsPage />;
+      case 'profile': return <ProfilePage user={user} profile={profile} />;
+      case 'apiKeys': return <ApiKeysPage />;
+      case 'billing': return <BillingPage />;
+      case 'help': return <HelpPage />;
+      default: return guardAI(<ContentGeneratorPage />);
     }
   };
 
@@ -376,19 +367,14 @@ const App: React.FC = () => {
     }
 
     if (flowState === 'payment' && selectedPlan) {
-      return (
-        <PaymentPage
-          planName={selectedPlan}
-          onPaymentSuccess={handlePaymentSuccess}
-          onBack={() => setFlowState('login')}
-        />
-      );
+      return <PaymentPage planName={selectedPlan} onPaymentSuccess={handlePaymentSuccess} onBack={() => setFlowState('login')} />;
     }
 
     if (flowState === 'contact') {
       return <ContactPage onBack={() => setFlowState('login')} />;
     }
 
+    // Fluxos do /app sem sessão → Login
     if (flowState === 'login') {
       return (
         <LoginPage
@@ -400,11 +386,11 @@ const App: React.FC = () => {
       );
     }
 
+    // fallback
     return <LoadingFallback />;
   };
 
-  // Sem Suspense, render direto
-  return renderAppContent();
+  return <Suspense fallback={<LoadingFallback />}>{renderAppContent()}</Suspense>;
 };
 
 export default App;
