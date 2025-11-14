@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import type { ProductOption } from '../types';
 import { PostEditorPanel } from './PostEditorPanel';
 import { ComparisonModal } from './ComparisonModal';
@@ -15,21 +15,20 @@ const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
   const fullStars = Math.floor(rating);
   const halfStar = rating % 1 >= 0.5;
   const emptyStars = 5 - fullStars - (halfStar ? 1 : 0);
-
   return (
     <div className="flex items-center">
       {[...Array(fullStars)].map((_, i) => (
-        <span key={`full-${i}`} className="text-amber-400 text-xs">
+        <span key={`full-${i}`} className="text-amber-400">
           ★
         </span>
       ))}
-      {halfStar && <span className="text-amber-400 text-xs">★</span>}
+      {halfStar && <span className="text-amber-400">★</span>}
       {[...Array(emptyStars)].map((_, i) => (
-        <span key={`empty-${i}`} className="text-gray-600 text-xs">
+        <span key={`empty-${i}`} className="text-gray-600">
           ☆
         </span>
       ))}
-      <span className="text-[11px] text-gray-400 ml-1">{rating.toFixed(1)}</span>
+      <span className="text-xs text-gray-400 ml-2">{rating.toFixed(1)}</span>
     </div>
   );
 };
@@ -37,7 +36,7 @@ const StarRating: React.FC<{ rating: number }> = ({ rating }) => {
 const SalesIcon = () => (
   <svg
     xmlns="http://www.w3.org/2000/svg"
-    className="h-3.5 w-3.5 mr-1 text-gray-400"
+    className="h-4 w-4 mr-1.5 text-gray-400"
     viewBox="0 0 20 20"
     fill="currentColor"
   >
@@ -54,11 +53,12 @@ const ProductCard: React.FC<ProductCardProps> = ({
   isComparisonMode,
 }) => {
   const cardClasses = `
-    bg-slate-800 border rounded-xl overflow-hidden flex flex-col
-    transform transition-all duration-200 shadow-md cursor-pointer
-    ${isSelected
-      ? 'border-orange-400 shadow-lg shadow-orange-500/20 scale-[1.01]'
-      : 'border-slate-700 hover:scale-[1.01] hover:border-orange-500/40'
+    bg-slate-800 border rounded-xl overflow-hidden flex flex-col 
+    transform transition-all duration-300 shadow-lg cursor-pointer
+    ${
+      isSelected
+        ? 'scale-[1.03] border-orange-400 shadow-2xl shadow-orange-500/20'
+        : 'border-slate-700 hover:scale-[1.02] hover:border-orange-500/50'
     }
   `;
 
@@ -72,8 +72,7 @@ const ProductCard: React.FC<ProductCardProps> = ({
 
   return (
     <div className={cardClasses} onClick={handleClick}>
-      {/* Imagem um pouco menor */}
-      <div className="w-full h-40 bg-slate-700 flex items-center justify-center relative">
+      <div className="w-full h-48 bg-slate-700 flex items-center justify-center relative">
         <img
           src={product.imageUrl}
           alt={product.productName}
@@ -84,42 +83,41 @@ const ProductCard: React.FC<ProductCardProps> = ({
           }}
         />
         {isComparisonMode && (
-          <div className="absolute top-2 right-2 w-5 h-5 rounded-full flex items-center justify-center bg-slate-900/60 border border-slate-500">
-            {isSelected && <div className="w-2.5 h-2.5 rounded-full bg-orange-500" />}
+          <div className="absolute top-2 right-2 w-6 h-6 rounded-full flex items-center justify-center bg-slate-900/50 border-2 border-slate-600">
+            {isSelected && (
+              <div className="w-3 h-3 rounded-full bg-orange-500"></div>
+            )}
           </div>
         )}
       </div>
-
-      {/* Conteúdo mais compacto */}
-      <div className="p-3 flex flex-col flex-grow">
-        <h3 className="text-sm font-semibold text-white mb-2 flex-grow min-h-[40px] line-clamp-3">
+      <div className="p-4 flex flex-col flex-grow">
+        <h3 className="text-sm font-bold text-white mb-2 flex-grow min-h-[40px] line-clamp-2">
           {product.productName}
         </h3>
-
-        <div className="flex justify-between items-center mb-1.5">
-          <p className="text-lg font-semibold text-orange-400">{product.price}</p>
+        <div className="flex justify-between items-center mb-2">
+          <p className="text-lg font-semibold text-orange-400">
+            {product.price}
+          </p>
           <StarRating rating={product.rating} />
         </div>
-
-        <div className="flex justify-between items-center text-xs text-gray-400 mb-3">
+        <div className="flex justify-between items-center text-xs text-gray-400 mb-4">
           <p>
             Comissão:{' '}
-            <span className="font-semibold text-amber-400">{product.commission}</span>
+            <span className="font-semibold text-amber-400">
+              {product.commission}
+            </span>
           </p>
           <div className="flex items-center">
             <SalesIcon />
-            <span className="font-medium truncate max-w-[90px]">
-              {product.salesVolume}
-            </span>
+            <span className="font-medium">{product.salesVolume}</span>
           </div>
         </div>
-
         <button
           onClick={(e) => {
             e.stopPropagation(); // Prevent card's onClick
             onSelect();
           }}
-          className="w-full mt-auto px-3 py-1.5 bg-orange-600 text-white text-sm font-semibold rounded-md shadow-md hover:bg-orange-700 transition-colors disabled:opacity-30"
+          className="w-full mt-auto px-4 py-2 bg-orange-600 text-white text-sm font-semibold rounded-lg shadow-md hover:bg-orange-700 transition-colors disabled:opacity-30"
           disabled={isComparisonMode}
         >
           {isComparisonMode ? 'Selecione 2 para comparar' : 'Preparar Postagem'}
@@ -144,7 +142,7 @@ const Pagination: React.FC<{
       <button
         onClick={() => onPageChange(currentPage - 1)}
         disabled={currentPage === 1}
-        className="px-3 py-1.5 bg-slate-700 text-sm text-white font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600"
+        className="px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 border border-slate-600"
       >
         Anterior
       </button>
@@ -152,10 +150,10 @@ const Pagination: React.FC<{
         <button
           key={number}
           onClick={() => onPageChange(number)}
-          className={`w-8 h-8 text-sm font-semibold rounded-md transition-colors ${
+          className={`w-9 h-9 text-sm font-semibold rounded-md border transition-colors ${
             currentPage === number
-              ? 'bg-orange-600 text-white'
-              : 'bg-slate-700 text-gray-300 hover:bg-slate-600'
+              ? 'bg-orange-600 text-white border-orange-500'
+              : 'bg-slate-800 text-gray-300 border-slate-600 hover:bg-slate-700'
           }`}
         >
           {number}
@@ -164,7 +162,7 @@ const Pagination: React.FC<{
       <button
         onClick={() => onPageChange(currentPage + 1)}
         disabled={currentPage === totalPages}
-        className="px-3 py-1.5 bg-slate-700 text-sm text-white font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-600"
+        className="px-4 py-2 bg-slate-800 text-white text-sm font-semibold rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-slate-700 border border-slate-600"
       >
         Próximo
       </button>
@@ -172,11 +170,44 @@ const Pagination: React.FC<{
   );
 };
 
+type SortMode =
+  | 'relevance'
+  | 'priceAsc'
+  | 'priceDesc'
+  | 'commissionDesc'
+  | 'salesDesc';
+
 interface ProductSelectionPageProps {
   options: ProductOption[];
   onBack: () => void;
   provider: string;
 }
+
+// helpers para converter strings em números (preço, comissão, vendas)
+const parsePrice = (priceStr?: string): number | null => {
+  if (!priceStr) return null;
+  const cleaned = priceStr
+    .replace(/[^\d,.-]/g, '')
+    .replace(/\./g, '')
+    .replace(',', '.');
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+};
+
+const parsePercent = (percentStr?: string): number | null => {
+  if (!percentStr) return null;
+  const cleaned = percentStr.replace(/[^\d,.,-]/g, '').replace(',', '.');
+  const n = Number(cleaned);
+  return Number.isFinite(n) ? n : null;
+};
+
+const parseSales = (salesStr?: string): number | null => {
+  if (!salesStr) return null;
+  const match = salesStr.match(/\d+/g);
+  if (!match) return null;
+  const n = Number(match.join(''));
+  return Number.isFinite(n) ? n : null;
+};
 
 export const ProductSelectionPage: React.FC<ProductSelectionPageProps> = ({
   options,
@@ -185,17 +216,51 @@ export const ProductSelectionPage: React.FC<ProductSelectionPageProps> = ({
 }) => {
   const [selectedProductForPost, setSelectedProductForPost] =
     useState<ProductOption | null>(null);
-  const [comparisonProducts, setComparisonProducts] = useState<ProductOption[]>([]);
+  const [comparisonProducts, setComparisonProducts] = useState<ProductOption[]>(
+    []
+  );
   const [isComparing, setIsComparing] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [isComparisonMode, setIsComparisonMode] = useState(false);
+  const [sortMode, setSortMode] = useState<SortMode>('relevance');
 
   const ITEMS_PER_PAGE = 12;
-  const totalPages = Math.ceil(options.length / ITEMS_PER_PAGE);
 
+  // aplica ordenação antes da paginação
+  const sortedOptions = useMemo(() => {
+    const cloned = [...options];
+
+    cloned.sort((a, b) => {
+      const priceA = parsePrice(a.price);
+      const priceB = parsePrice(b.price);
+      const commissionA = parsePercent(a.commission);
+      const commissionB = parsePercent(b.commission);
+      const salesA = parseSales(a.salesVolume);
+      const salesB = parseSales(b.salesVolume);
+
+      switch (sortMode) {
+        case 'priceAsc':
+          return (priceA ?? Infinity) - (priceB ?? Infinity);
+        case 'priceDesc':
+          return (priceB ?? -1) - (priceA ?? -1);
+        case 'commissionDesc':
+          return (commissionB ?? -1) - (commissionA ?? -1);
+        case 'salesDesc':
+          return (salesB ?? -1) - (salesA ?? -1);
+        case 'relevance':
+        default:
+          // mantém ordem original (já vem da API organizada)
+          return 0;
+      }
+    });
+
+    return cloned;
+  }, [options, sortMode]);
+
+  const totalPages = Math.ceil(sortedOptions.length / ITEMS_PER_PAGE) || 1;
   const startIndex = (currentPage - 1) * ITEMS_PER_PAGE;
   const endIndex = startIndex + ITEMS_PER_PAGE;
-  const currentOptions = options.slice(startIndex, endIndex);
+  const currentOptions = sortedOptions.slice(startIndex, endIndex);
 
   const handlePageChange = (page: number) => {
     if (page < 1 || page > totalPages) return;
@@ -210,115 +275,161 @@ export const ProductSelectionPage: React.FC<ProductSelectionPageProps> = ({
 
   const handleSelectForComparison = (product: ProductOption) => {
     setComparisonProducts((prev) => {
+      if (prev.some((p) => p.productUrl === product.productUrl)) {
+        return prev;
+      }
       if (prev.length < 2) {
         return [...prev, product];
       }
-      // Replace the second product if two are already selected
       return [prev[0], product];
     });
   };
 
   const handleDeselectForComparison = (product: ProductOption) => {
     setComparisonProducts((prev) =>
-      prev.filter((p) => p.productUrl !== product.productUrl),
+      prev.filter((p) => p.productUrl !== product.productUrl)
     );
   };
 
   const toggleComparisonMode = () => {
     setIsComparisonMode((prev) => !prev);
     setComparisonProducts([]);
+    setSelectedProductForPost(null);
   };
+
+  const sortLabel: Record<SortMode, string> = {
+    relevance: 'Relevância',
+    priceAsc: 'Menor preço',
+    priceDesc: 'Maior preço',
+    commissionDesc: 'Maior comissão',
+    salesDesc: 'Mais vendidos',
+  };
+
+  const sortOptions: SortMode[] = [
+    'relevance',
+    'salesDesc',
+    'commissionDesc',
+    'priceAsc',
+    'priceDesc',
+  ];
 
   return (
     <div className="animate-fade-in">
-      {/* container mais estreito para não “explodir” no dashboard */}
-      <div className="max-w-6xl mx-auto">
-        <div className="text-center mb-8">
-          <h2 className="text-2xl md:text-3xl font-extrabold text-white mb-1">
-            Selecione um Produto
-          </h2>
-          <p className="text-sm md:text-base text-gray-400">
-            Escolha um para gerar conteúdo, ou ative o modo de comparação.
-          </p>
-          <div className="flex items-center justify-center gap-3 mt-3">
-            <span className="text-xs md:text-sm text-gray-400">
-              Modo de Comparação
-            </span>
+      <div className="text-center mb-6">
+        <h2 className="text-3xl md:text-4xl font-extrabold text-white mb-2">
+          Selecione um Produto
+        </h2>
+        <p className="text-lg text-gray-400">
+          Escolha um para gerar conteúdo, ou ative o modo de comparação.
+        </p>
+        <div className="flex flex-col md:flex-row items-center justify-center gap-4 mt-5">
+          <div className="flex items-center gap-4">
+            <span className="text-gray-400">Modo de Comparação</span>
             <button
               onClick={toggleComparisonMode}
-              className={`relative inline-flex items-center h-5 md:h-6 rounded-full w-10 md:w-11 transition-colors ${
+              className={`relative inline-flex items-center h-6 rounded-full w-11 transition-colors ${
                 isComparisonMode ? 'bg-orange-600' : 'bg-slate-600'
               }`}
             >
               <span
-                className={`inline-block w-3.5 h-3.5 md:w-4 md:h-4 transform bg-white rounded-full transition-transform ${
-                  isComparisonMode ? 'translate-x-5 md:translate-x-6' : 'translate-x-1'
+                className={`inline-block w-4 h-4 transform bg-white rounded-full transition-transform ${
+                  isComparisonMode ? 'translate-x-6' : 'translate-x-1'
                 }`}
               />
             </button>
           </div>
-        </div>
 
-        {isComparisonMode && (
-          <div className="text-center mb-5 p-3 bg-slate-800/50 border border-slate-700 rounded-lg">
-            <p className="text-sm text-white font-semibold mb-1">
-              Modo de Comparação Ativo
-            </p>
-            <p className="text-xs text-gray-400">
-              Selecione dois produtos para comparar suas características lado a lado.
-            </p>
-            {comparisonProducts.length === 2 && (
+          {/* Barra de ordenação, mesma pegada dark do site */}
+          <div className="flex flex-wrap items-center justify-center gap-2 px-3 py-2 rounded-full bg-slate-900/70 border border-slate-700 shadow-inner">
+            <span className="text-xs uppercase tracking-wide text-slate-400 mr-1">
+              Ordenar por:
+            </span>
+            {sortOptions.map((mode) => (
               <button
-                onClick={() => setIsComparing(true)}
-                className="mt-3 px-5 py-1.5 bg-blue-600 text-white text-sm font-semibold rounded-full shadow-md hover:bg-blue-700"
+                key={mode}
+                type="button"
+                onClick={() => {
+                  setSortMode(mode);
+                  setCurrentPage(1);
+                }}
+                className={`px-3 py-1 rounded-full text-xs font-semibold transition-colors border ${
+                  sortMode === mode
+                    ? 'bg-orange-600 text-white border-orange-500 shadow-sm'
+                    : 'bg-slate-800/80 text-slate-300 border-slate-700 hover:bg-slate-700'
+                }`}
               >
-                Comparar Produtos Selecionados
+                {sortLabel[mode]}
               </button>
-            )}
+            ))}
           </div>
-        )}
-
-        {/* Grid um pouco mais “apertado” */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-4 gap-4 min-h-[420px]">
-          {currentOptions.map((product, index) => (
-            <ProductCard
-              key={product.productUrl || index}
-              product={product}
-              onSelect={() =>
-                isComparisonMode
-                  ? handleSelectForComparison(product)
-                  : handleSelectForPost(product)
-              }
-              onDeselect={() => handleDeselectForComparison(product)}
-              isSelected={
-                (isComparisonMode &&
-                  comparisonProducts.some(
-                    (p) => p.productUrl === product.productUrl,
-                  )) ||
-                (!isComparisonMode &&
-                  selectedProductForPost?.productUrl === product.productUrl)
-              }
-              isComparisonMode={isComparisonMode}
-            />
-          ))}
         </div>
 
-        {totalPages > 1 && (
-          <Pagination
-            currentPage={currentPage}
-            totalPages={totalPages}
-            onPageChange={handlePageChange}
+        <div className="mt-3 text-sm text-slate-400">
+          {sortedOptions.length} resultado
+          {sortedOptions.length !== 1 && 's'} • Página {currentPage} de{' '}
+          {totalPages}
+        </div>
+      </div>
+
+      {isComparisonMode && (
+        <div className="text-center mb-6 p-4 bg-slate-900/60 border border-slate-700 rounded-lg">
+          <p className="text-white font-semibold mb-1">
+            Modo de Comparação Ativo
+          </p>
+          <p className="text-xs text-gray-400">
+            Selecione dois produtos para comparar suas características lado a
+            lado.
+          </p>
+          {comparisonProducts.length === 2 && (
+            <button
+              onClick={() => setIsComparing(true)}
+              className="mt-3 px-5 py-2 bg-blue-600 text-white text-sm font-semibold rounded-full shadow-md hover:bg-blue-700 animate-pulse"
+            >
+              Comparar Produtos Selecionados
+            </button>
+          )}
+        </div>
+      )}
+
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-5 min-h-[480px]">
+        {currentOptions.map((product, index) => (
+          <ProductCard
+            key={product.productUrl || index}
+            product={product}
+            onSelect={() =>
+              isComparisonMode
+                ? handleSelectForComparison(product)
+                : handleSelectForPost(product)
+            }
+            onDeselect={() => handleDeselectForComparison(product)}
+            isSelected={
+              (isComparisonMode &&
+                comparisonProducts.some(
+                  (p) => p.productUrl === product.productUrl
+                )) ||
+              (!isComparisonMode &&
+                selectedProductForPost?.productUrl === product.productUrl)
+            }
+            isComparisonMode={isComparisonMode}
           />
-        )}
+        ))}
+      </div>
 
-        <div className="text-center mt-8">
-          <button
-            onClick={onBack}
-            className="px-6 py-2 bg-slate-700 text-sm md:text-base text-white font-semibold rounded-full shadow-md hover:bg-slate-600 transition-colors"
-          >
-            ← Voltar para a Busca
-          </button>
-        </div>
+      {totalPages > 1 && (
+        <Pagination
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageChange}
+        />
+      )}
+
+      <div className="text-center mt-10 mb-4">
+        <button
+          onClick={onBack}
+          className="px-8 py-3 bg-slate-800 text-white font-semibold rounded-full shadow-md hover:bg-slate-700 border border-slate-600 transition-colors duration-300 ease-in-out"
+        >
+          ← Voltar para a Busca
+        </button>
       </div>
 
       {selectedProductForPost && (
@@ -328,6 +439,7 @@ export const ProductSelectionPage: React.FC<ProductSelectionPageProps> = ({
           provider={provider}
         />
       )}
+
       {isComparing && comparisonProducts.length === 2 && (
         <ComparisonModal
           product1={comparisonProducts[0]}
