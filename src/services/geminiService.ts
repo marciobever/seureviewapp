@@ -1,6 +1,7 @@
 import { GoogleGenAI, Type, FunctionDeclaration } from "@google/genai";
 import { supabase } from './supabase';
 import type { ProductOption, PostContent, BlogPost, VideoScript } from '../types';
+import { GoogleGenAI as GoogleGenAIVideo } from "@google/genai";
 
 // =====================
 // CONFIG DE API KEY
@@ -318,8 +319,6 @@ export const generatePostForProduct = async (
 // Geração de vídeo curto (Reels)
 // =================================================
 
-import { GoogleGenAI as GoogleGenAIVideo } from "@google/genai";
-
 const requireVideoClient = () => {
   if (!API_KEY) {
     throw new Error(
@@ -410,3 +409,113 @@ export const getOptimizationSuggestions = async (title: string, body: string): P
   } catch (error) {
     console.error("Error getting optimization suggestions:", error);
     return ["Não foi possível carregar sugestões no momento."];
+  }
+};
+
+// =================================================
+// Geração de artigo de blog
+// =================================================
+
+export const generateBlogPost = async (topic: string): Promise<BlogPost> => {
+  const prompt = `
+    Você é um especialista em SEO e marketing de conteúdo. Sua tarefa é criar um artigo de blog completo e otimizado sobre o tópico: "${topic}".
+    O artigo deve ter uma introdução cativante, pelo menos 3 seções principais com títulos informativos (H2/H3), e uma conclusão forte com um call-to-action.
+    No final, liste 5-7 palavras-chave relevantes para SEO.
+    Estruture sua resposta usando a ferramenta 'createBlogPost'.
+  `;
+  try {
+    const response = await requireAI().models.generateContent({
+      model: 'gemini-2.5-pro',
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        tools: [{ functionDeclarations: [createBlogPostTool] }],
+        toolConfig: {
+          functionCallingConfig: {
+            mode: "ANY",
+            allowedFunctionNames: ["createBlogPost"]
+          }
+        }
+      }
+    });
+    const functionCall = response.functionCalls?.[0];
+    if (!functionCall || functionCall.name !== 'createBlogPost') {
+      throw new Error("A IA não retornou o artigo de blog na estrutura esperada.");
+    }
+    return functionCall.args as BlogPost;
+  } catch (error) {
+    console.error("Error generating blog post:", error);
+    throw new Error("Falha ao gerar o artigo de blog.");
+  }
+};
+
+// =================================================
+// Geração de roteiro de vídeo
+// =================================================
+
+export const generateVideoScript = async (topic: string, videoType: 'short' | 'long'): Promise<VideoScript> => {
+  const prompt = `
+    Você é um roteirista de vídeos para redes sociais. Crie um roteiro para um vídeo do tipo "${videoType === 'short' ? 'Curto (Reels/TikTok)' : 'Longo (YouTube)'}" sobre o tópico: "${topic}".
+    O roteiro deve incluir um título, um gancho forte para os primeiros segundos, uma introdução, os pontos principais a serem abordados, um call-to-action claro e um encerramento.
+    Estruture a resposta usando a ferramenta 'createVideoScript'.
+  `;
+  try {
+    const response = await requireAI().models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ parts: [{ text: prompt }] }],
+      config: {
+        tools: [{ functionDeclarations: [createVideoScriptTool] }],
+        toolConfig: {
+          functionCallingConfig: {
+            mode: "ANY",
+            allowedFunctionNames: ["createVideoScript"]
+          }
+        }
+      }
+    });
+    const functionCall = response.functionCalls?.[0];
+    if (!functionCall || functionCall.name !== 'createVideoScript') {
+      throw new Error("A IA não retornou o roteiro na estrutura esperada.");
+    }
+    return functionCall.args as VideoScript;
+  } catch (error) {
+    console.error("Error generating video script:", error);
+    throw new Error("Falha ao gerar o roteiro do vídeo.");
+  }
+};
+
+// =================================================
+// Comparação de dois produtos
+// =================================================
+
+export const compareProducts = async (product1: ProductOption, product2: ProductOption): Promise<string> => {
+  const prompt = `
+    Você é um especialista em análise de produtos. Compare os dois produtos a seguir e gere uma resposta em Markdown.
+
+    Produto 1:
+    Nome: ${product1.productName}
+    Preço: ${product1.price}
+    Avaliação: ${product1.rating}
+    Vendas: ${product1.salesVolume}
+
+    Produto 2:
+    Nome: ${product2.productName}
+    Preço: ${product2.price}
+    Avaliação: ${product2.rating}
+    Vendas: ${product2.salesVolume}
+
+    Sua resposta deve conter:
+    1.  Um parágrafo de "Veredito Rápido" resumindo qual produto é melhor para qual tipo de consumidor.
+    2.  Uma seção de "Pontos Positivos" para cada produto.
+    3.  Uma tabela de comparação (usando sintaxe Markdown) com as características: Preço, Avaliação e Popularidade (vendas).
+  `;
+  try {
+    const response = await requireAI().models.generateContent({
+      model: 'gemini-2.5-flash',
+      contents: [{ parts: [{ text: prompt }] }],
+    });
+    return response.text;
+  } catch (error) {
+    console.error("Error comparing products:", error);
+    throw new Error("Falha ao comparar os produtos.");
+  }
+};
