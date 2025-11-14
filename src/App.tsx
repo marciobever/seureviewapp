@@ -59,8 +59,8 @@ const SupabaseConfigError: React.FC = () => (
   </div>
 );
 
-// ====== helpers de ambiente (evita quebrar se faltar a key de IA) ======
-const HAS_GEMINI = !!(import.meta as any)?.env?.VITE_GEMINI_API_KEY;
+// 🔥 por enquanto, NÃO vamos bloquear nada por causa de VITE_GEMINI_API_KEY
+// const HAS_GEMINI = !!(import.meta as any)?.env?.VITE_GEMINI_API_KEY;
 
 const App: React.FC = () => {
   if (!supabaseConfigured) return <SupabaseConfigError />;
@@ -214,7 +214,6 @@ const App: React.FC = () => {
           history.replaceState(null, '', fullUrl.pathname + fullUrl.search);
         }
 
-        // A partir daqui, deixamos o Supabase cuidar do código PKCE
         const { data, error } = await supabase!.auth.getSession();
         if (error) {
           console.error('getSession error:', error);
@@ -231,12 +230,10 @@ const App: React.FC = () => {
     const { data: authListener } = supabase!.auth.onAuthStateChange(
       async (event, session) => {
         try {
-          // Não travar a tela em loading em eventos de refresh
           if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
             await handleSession(session);
             return;
           }
-
           await handleSession(session);
         } catch (e) {
           console.error('onAuthStateChange handleSession error:', e);
@@ -254,7 +251,6 @@ const App: React.FC = () => {
   const handleSelectPlan = (planName: string) => {
     setSelectedPlan(planName);
     sessionStorage.setItem('selectedPlan', planName);
-    // quando estiver na landing, manda para fluxo do app
     window.location.href = '/app';
   };
 
@@ -284,56 +280,50 @@ const App: React.FC = () => {
     setCurrentPage('contentGenerator');
     sessionStorage.removeItem('selectedPlan');
     setSelectedPlan(null);
-    window.location.href = '/'; // volta para landing
+    window.location.href = '/';
   };
 
   // --------- render ----------
-  const MissingAIKey: React.FC = () => (
-    <div className="min-h-screen bg-slate-950 text-gray-200 flex items-center justify-center p-6">
-      <div className="max-w-lg text-center bg-slate-800/60 border border-slate-700 rounded-xl p-8">
-        <h2 className="text-xl font-semibold mb-2">Chave da IA ausente</h2>
-        <p className="text-gray-300">
-          Defina <code>VITE_GEMINI_API_KEY</code> no ambiente de produção (Coolify) para usar os geradores.
-        </p>
-      </div>
-    </div>
-  );
-
   const renderCurrentPage = () => {
     if (!user || !profile) return <LoadingFallback />;
 
-    // Protege páginas que usam IA quando a key não existe
-    const guardAI = (node: React.ReactNode) => (HAS_GEMINI ? node : <MissingAIKey />);
-
     switch (currentPage) {
-      // 👇 Conteúdo Social SEM guardAI, pra sempre mostrar a busca + seletor
       case 'contentGenerator':
         return <ContentGeneratorPage />;
 
       case 'reelsGenerator':
-        return guardAI(<ReelsGeneratorPage profile={profile} />);
+        return <ReelsGeneratorPage profile={profile} />;
+
       case 'blogGenerator':
-        return guardAI(<BlogGeneratorPage profile={profile} />);
+        return <BlogGeneratorPage profile={profile} />;
+
       case 'videoScriptGenerator':
-        return guardAI(<VideoScriptGeneratorPage profile={profile} />);
+        return <VideoScriptGeneratorPage profile={profile} />;
+
       case 'commentBot':
         return <CommentBotPage />;
+
       case 'history':
         return <HistoryPage />;
+
       case 'scheduling':
         return <SchedulingPage />;
+
       case 'campaigns':
         return <CampaignsPage />;
+
       case 'profile':
         return <ProfilePage user={user} profile={profile} />;
+
       case 'apiKeys':
         return <ApiKeysPage />;
+
       case 'billing':
         return <BillingPage />;
+
       case 'help':
         return <HelpPage />;
 
-      // fallback: volta pro ContentGenerator
       default:
         return <ContentGeneratorPage />;
     }
@@ -399,7 +389,6 @@ const App: React.FC = () => {
       return <ContactPage onBack={() => setFlowState('login')} />;
     }
 
-    // Fluxos do /app sem sessão → Login
     if (flowState === 'login') {
       return (
         <LoginPage
@@ -411,7 +400,6 @@ const App: React.FC = () => {
       );
     }
 
-    // fallback
     return <LoadingFallback />;
   };
 
