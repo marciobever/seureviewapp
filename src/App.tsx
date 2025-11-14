@@ -289,32 +289,19 @@ const App: React.FC = () => {
     if (!user || !profile) return <LoadingFallback />;
 
     switch (currentPage) {
-      case 'contentGenerator':
-        return <ContentGeneratorPage />;
-      case 'reelsGenerator':
-        return <ReelsGeneratorPage profile={profile} />;
-      case 'blogGenerator':
-        return <BlogGeneratorPage profile={profile} />;
-      case 'videoScriptGenerator':
-        return <VideoScriptGeneratorPage profile={profile} />;
-      case 'commentBot':
-        return <CommentBotPage />;
-      case 'history':
-        return <HistoryPage />;
-      case 'scheduling':
-        return <SchedulingPage />;
-      case 'campaigns':
-        return <CampaignsPage />;
-      case 'profile':
-        return <ProfilePage user={user} profile={profile} />;
-      case 'apiKeys':
-        return <ApiKeysPage />;
-      case 'billing':
-        return <BillingPage />;
-      case 'help':
-        return <HelpPage />;
-      default:
-        return <ContentGeneratorPage />;
+      case 'contentGenerator': return <ContentGeneratorPage />;
+      case 'reelsGenerator': return <ReelsGeneratorPage profile={profile} />;
+      case 'blogGenerator': return <BlogGeneratorPage profile={profile} />;
+      case 'videoScriptGenerator': return <VideoScriptGeneratorPage profile={profile} />;
+      case 'commentBot': return <CommentBotPage />;
+      case 'history': return <HistoryPage />;
+      case 'scheduling': return <SchedulingPage />;
+      case 'campaigns': return <CampaignsPage />;
+      case 'profile': return <ProfilePage user={user} profile={profile} />;
+      case 'apiKeys': return <ApiKeysPage />;
+      case 'billing': return <BillingPage />;
+      case 'help': return <HelpPage />;
+      default: return <ContentGeneratorPage />;
     }
   };
 
@@ -326,6 +313,18 @@ const App: React.FC = () => {
           onSelectPlan={handleSelectPlan}
           onShowContact={handleShowContact}
           onLoginClick={handleLoginClick}
+        />
+      );
+    }
+
+    // 🔑 PRIORIDADE: se o fluxo é login, mostra tela de login, mesmo com loading true
+    if (flowState === 'login') {
+      return (
+        <LoginPage
+          onGoToRegister={() => {
+            if (!selectedPlan) setSelectedPlan('PRO');
+            setFlowState('register');
+          }}
         />
       );
     }
@@ -376,18 +375,6 @@ const App: React.FC = () => {
 
     if (flowState === 'contact') {
       return <ContactPage onBack={() => setFlowState('login')} />;
-    }
-
-    // Fluxos do /app sem sessão → Login
-    if (flowState === 'login') {
-      return (
-        <LoginPage
-          onGoToRegister={() => {
-            if (!selectedPlan) setSelectedPlan('PRO');
-            setFlowState('register');
-          }}
-        />
-      );
     }
 
     // fallback
