@@ -214,26 +214,11 @@ const App: React.FC = () => {
           history.replaceState(null, '', fullUrl.pathname + fullUrl.search);
         }
 
-        // Troca ?code=... (PKCE) por sessão — apenas uma vez
-        const code = fullUrl.searchParams.get('code');
-        const exchanged = sessionStorage.getItem('sb-code-exchanged') === '1';
-        if (code && !exchanged) {
-          try {
-            const { error } = await supabase!.auth.exchangeCodeForSession(code);
-            if (error) {
-              console.error('exchangeCodeForSession error:', error);
-            } else {
-              sessionStorage.setItem('sb-code-exchanged', '1');
-              history.replaceState(null, '', '/app'); // limpa query e fixa no /app
-            }
-          } catch (e) {
-            console.error('exchangeCodeForSession throw:', e);
-          }
-        }
-
+        // A partir daqui, deixamos o Supabase cuidar do código PKCE
         const { data, error } = await supabase!.auth.getSession();
-        if (error) console.error('getSession error:', error);
-        if (!cancelled) {
+        if (error) {
+          console.error('getSession error:', error);
+        } else if (!cancelled) {
           await handleSession(data?.session ?? null);
         }
       } finally {
@@ -246,20 +231,15 @@ const App: React.FC = () => {
     const { data: authListener } = supabase!.auth.onAuthStateChange(
       async (event, session) => {
         try {
-          // 🎯 CORREÇÃO: não mostrar spinner em refresh de token (quando só troca de aba, por exemplo)
-          if (event === 'TOKEN_REFRESHED') {
-            if (!cancelled) {
-              await handleSession(session);
-            }
+          // Não travar a tela em loading em eventos de refresh
+          if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+            await handleSession(session);
             return;
           }
 
-          if (!cancelled) setLoading(true);
           await handleSession(session);
         } catch (e) {
           console.error('onAuthStateChange handleSession error:', e);
-        } finally {
-          if (!cancelled) setLoading(false);
         }
       }
     );
@@ -312,7 +292,9 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-gray-200 flex items-center justify-center p-6">
       <div className="max-w-lg text-center bg-slate-800/60 border border-slate-700 rounded-xl p-8">
         <h2 className="text-xl font-semibold mb-2">Chave da IA ausente</h2>
-        <p className="text-gray-300">Defina <code>VITE_GEMINI_API_KEY</code> no ambiente de produção (Coolify) para usar os geradores.</p>
+        <p className="text-gray-300">
+          Defina <code>VITE_GEMINI_API_KEY</code> no ambiente de produção (Coolify) para usar os geradores.
+        </p>
       </div>
     </div>
   );
