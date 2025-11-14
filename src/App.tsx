@@ -199,6 +199,8 @@ const App: React.FC = () => {
     const storedPlan = sessionStorage.getItem('selectedPlan');
     if (storedPlan) setSelectedPlan(storedPlan);
 
+    let cancelled = false;
+
     const boot = async () => {
       try {
         setLoading(true);
@@ -212,40 +214,38 @@ const App: React.FC = () => {
           history.replaceState(null, '', fullUrl.pathname + fullUrl.search);
         }
 
-        // Troca ?code=... (PKCE) por sessão — apenas uma vez
-        const code = fullUrl.searchParams.get('code');
-        const exchanged = sessionStorage.getItem('sb-code-exchanged') === '1';
-        if (code && !exchanged) {
-          try {
-            const { error } = await supabase!.auth.exchangeCodeForSession(code);
-            if (error) {
-              console.error('exchangeCodeForSession error:', error);
-            } else {
-              sessionStorage.setItem('sb-code-exchanged', '1');
-              history.replaceState(null, '', '/app'); // limpa query e fixa no /app
-            }
-          } catch (e) {
-            console.error('exchangeCodeForSession throw:', e);
-          }
-        }
-
+        // A partir daqui, deixamos o Supabase cuidar do código PKCE
         const { data, error } = await supabase!.auth.getSession();
-        if (error) console.error('getSession error:', error);
-        await handleSession(data?.session ?? null);
+        if (error) {
+          console.error('getSession error:', error);
+        } else if (!cancelled) {
+          await handleSession(data?.session ?? null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     boot();
 
-    const { data: authListener } = supabase!.auth.onAuthStateChange(async (_event, session) => {
-      setLoading(true);
-      await handleSession(session);
-      setLoading(false);
-    });
+    const { data: authListener } = supabase!.auth.onAuthStateChange(
+      async (event, session) => {
+        try {
+          // Não travar a tela em loading em eventos de refresh
+          if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+            await handleSession(session);
+            return;
+          }
+
+          await handleSession(session);
+        } catch (e) {
+          console.error('onAuthStateChange handleSession error:', e);
+        }
+      }
+    );
 
     return () => {
+      cancelled = true;
       authListener.subscription.unsubscribe();
     };
   }, [forceMarketing]);
@@ -292,7 +292,9 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-slate-950 text-gray-200 flex items-center justify-center p-6">
       <div className="max-w-lg text-center bg-slate-800/60 border border-slate-700 rounded-xl p-8">
         <h2 className="text-xl font-semibold mb-2">Chave da IA ausente</h2>
-        <p className="text-gray-300">Defina <code>VITE_GEMINI_API_KEY</code> no ambiente de produção (Coolify) para usar os geradores.</p>
+        <p className="text-gray-300">
+          Defina <code>VITE_GEMINI_API_KEY</code> no ambiente de produção (Coolify) para usar os geradores.
+        </p>
       </div>
     </div>
   );
@@ -367,7 +369,13 @@ const App: React.FC = () => {
     }
 
     if (flowState === 'payment' && selectedPlan) {
-      return <PaymentPage planName={selectedPlan} onPaymentSuccess={handlePaymentSuccess} onBack={() => setFlowState('login')} />;
+      return (
+        <PaymentPage
+          planName={selectedPlan}
+          onPaymentSuccess={handlePaymentSuccess}
+          onBack={() => setFlowState('login')}
+        />
+      );
     }
 
     if (flowState === 'contact') {
