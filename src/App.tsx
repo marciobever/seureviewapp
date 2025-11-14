@@ -1,26 +1,26 @@
-import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { supabase, supabaseConfigured } from './services/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
-// Lazy load components
-const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
-const LoginPage = lazy(() => import('./components/LoginPage').then(m => ({ default: m.LoginPage })));
-const RegistrationPage = lazy(() => import('../components/RegistrationPage').then(m => ({ default: m.RegistrationPage })));
-const DashboardLayout = lazy(() => import('./components/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
-const ContentGeneratorPage = lazy(() => import('./components/ContentGeneratorPage').then(m => ({ default: m.ContentGeneratorPage })));
-const ReelsGeneratorPage = lazy(() => import('../components/ReelsGeneratorPage').then(m => ({ default: m.ReelsGeneratorPage })));
-const CommentBotPage = lazy(() => import('./components/CommentBotPage').then(m => ({ default: m.CommentBotPage })));
-const HistoryPage = lazy(() => import('./components/HistoryPage').then(m => ({ default: m.HistoryPage })));
-const ProfilePage = lazy(() => import('../components/ProfilePage').then(m => ({ default: m.ProfilePage })));
-const ApiKeysPage = lazy(() => import('./components/ApiKeysPage').then(m => ({ default: m.ApiKeysPage })));
-const BillingPage = lazy(() => import('./components/BillingPage').then(m => ({ default: m.BillingPage })));
-const PaymentPage = lazy(() => import('../components/PaymentPage').then(m => ({ default: m.PaymentPage })));
-const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
-const ContactPage = lazy(() => import('./components/ContactPage').then(m => ({ default: m.ContactPage })));
-const SchedulingPage = lazy(() => import('../components/SchedulingPage').then(m => ({ default: m.SchedulingPage })));
-const BlogGeneratorPage = lazy(() => import('./components/BlogGeneratorPage').then(m => ({ default: m.BlogGeneratorPage })));
-const VideoScriptGeneratorPage = lazy(() => import('../components/VideoScriptGeneratorPage').then(m => ({ default: m.VideoScriptGeneratorPage })));
-const CampaignsPage = lazy(() => import('./components/CampaignsPage').then(m => ({ default: m.CampaignsPage })));
+// Imports diretos (sem lazy / Suspense)
+import { LandingPage } from './components/LandingPage';
+import { LoginPage } from './components/LoginPage';
+import { RegistrationPage } from '../components/RegistrationPage';
+import { DashboardLayout } from './components/DashboardLayout';
+import { ContentGeneratorPage } from './components/ContentGeneratorPage';
+import { ReelsGeneratorPage } from '../components/ReelsGeneratorPage';
+import { CommentBotPage } from './components/CommentBotPage';
+import { HistoryPage } from './components/HistoryPage';
+import { ProfilePage } from '../components/ProfilePage';
+import { ApiKeysPage } from './components/ApiKeysPage';
+import { BillingPage } from './components/BillingPage';
+import { PaymentPage } from '../components/PaymentPage';
+import { HelpPage } from './components/HelpPage';
+import { ContactPage } from './components/ContactPage';
+import { SchedulingPage } from '../components/SchedulingPage';
+import { BlogGeneratorPage } from './components/BlogGeneratorPage';
+import { VideoScriptGeneratorPage } from '../components/VideoScriptGeneratorPage';
+import { CampaignsPage } from './components/CampaignsPage';
 
 export type Page =
   | 'contentGenerator' | 'reelsGenerator' | 'commentBot' | 'history'
@@ -59,7 +59,7 @@ const SupabaseConfigError: React.FC = () => (
   </div>
 );
 
-// 🔥 por enquanto, NÃO vamos bloquear nada por causa de VITE_GEMINI_API_KEY
+// (por enquanto não usamos HAS_GEMINI pra não travar nada por falta de env)
 // const HAS_GEMINI = !!(import.meta as any)?.env?.VITE_GEMINI_API_KEY;
 
 const App: React.FC = () => {
@@ -403,7 +403,8 @@ const App: React.FC = () => {
     return <LoadingFallback />;
   };
 
-  return <Suspense fallback={<LoadingFallback />}>{renderAppContent()}</Suspense>;
+  // Sem Suspense, render direto
+  return renderAppContent();
 };
 
 export default App;
