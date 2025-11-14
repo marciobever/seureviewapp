@@ -64,7 +64,13 @@ export type Page =
   | 'profile' | 'apiKeys' | 'billing' | 'help' | 'scheduling'
   | 'blogGenerator' | 'videoScriptGenerator' | 'campaigns';
 
-type AppFlowState = 'landing' | 'payment' | 'login' | 'register' | 'dashboard' | 'contact';
+type AppFlowState =
+  | 'landing'
+  | 'payment'
+  | 'login'
+  | 'register'
+  | 'dashboard'
+  | 'contact';
 
 export interface UserProfile {
   id: string;
@@ -84,10 +90,13 @@ const LoadingFallback: React.FC = () => (
 const SupabaseConfigError: React.FC = () => (
   <div className="min-h-screen bg-slate-950 text-gray-200 flex flex-col items-center justify-center p-4">
     <div className="w-full max-w-2xl text-center bg-slate-800 border border-red-500/50 rounded-lg p-8">
-      <div className="text-5xl mb-4" role="img" aria-label="tool icon">🔧</div>
+      <div className="text-5xl mb-4" role="img" aria-label="tool icon">
+        🔧
+      </div>
       <h1 className="text-2xl font-bold text-red-400 mb-2">Erro de Configuração</h1>
       <p className="text-red-300 mb-6">
-        As credenciais do Supabase não foram definidas (<code>SUPABASE_URL</code> / <code>SUPABASE_ANON_KEY</code>).
+        As credenciais do Supabase não foram definidas (<code>SUPABASE_URL</code> /{' '}
+        <code>SUPABASE_ANON_KEY</code>).
       </p>
     </div>
     <footer className="absolute bottom-0 py-6 text-center text-gray-600 text-sm">
@@ -111,58 +120,51 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('contentGenerator');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-  const profileTries = useRef(0);
-  const MAX_PROFILE_TRIES = 3;
+  const triedProfile = useRef(false);
 
-  // --------- helpers: profile ----------
+  // ---------- helpers de profile ----------
   const fetchProfile = async (u: User): Promise<UserProfile | null> => {
-    const { data, error } = await supabase!
-      .from('profiles')
-      .select('*')
-      .eq('id', u.id)
-      .single();
-
-    if (error && error.code !== 'PGRST116') {
-      console.error('profiles SELECT error:', error);
-      return null;
-    }
-    return (data as UserProfile) ?? null;
-  };
-
-  const ensureProfile = async (u: User): Promise<UserProfile | null> => {
-    const found = await fetchProfile(u);
-    if (found) return found;
-
-    if (profileTries.current < MAX_PROFILE_TRIES) {
-      profileTries.current += 1;
-      await new Promise(r => setTimeout(r, 1200));
-      const again = await fetchProfile(u);
-      if (again) return again;
-    }
-
     try {
-      const planFromReg = (sessionStorage.getItem('selectedPlan') || 'FREE') as UserProfile['plan'];
-      const credits = planFromReg === 'PRO' ? 50 : planFromReg === 'AGENCY' ? 150 : 5;
-
-      const { data: inserted, error: insErr } = await supabase!
+      const { data, error } = await supabase!
         .from('profiles')
-        .insert({
-          id: u.id,
-          full_name: u.user_metadata.full_name || u.email || 'Novo Usuário',
-          avatar_url: u.user_metadata.avatar_url || '',
-          plan: planFromReg,
-          credits,
-        })
-        .select()
+        .select('*')
+        .eq('id', u.id)
         .single();
 
-      if (!insErr && inserted) return inserted as UserProfile;
-      console.warn('profiles INSERT fallback error:', insErr);
+      if (error && error.code !== 'PGRST116') {
+        console.error('profiles SELECT error:', error);
+        return null;
+      }
+      return (data as UserProfile) ?? null;
     } catch (e) {
-      console.warn('profiles INSERT fallback exception:', e);
+      console.error('profiles SELECT exception:', e);
+      return null;
     }
+  };
 
-    return null;
+  const buildFallbackProfile = (u: User): UserProfile => {
+    const planFromReg = (sessionStorage.getItem('selectedPlan') || 'FREE') as UserProfile['plan'];
+    const plan: UserProfile['plan'] =
+      planFromReg === 'PRO' || planFromReg === 'AGENCY' ? planFromReg : 'FREE';
+
+    const credits =
+      plan === 'PRO'
+        ? 50
+        : plan === 'AGENCY'
+        ? 150
+        : 5;
+
+    return {
+      id: u.id,
+      full_name: (u.user_metadata as any)?.full_name || u.email || 'Novo Usuário',
+      avatar_url:
+        (u.user_metadata as any)?.avatar_url ||
+        `https://ui-avatars.com/api/?name=${encodeURIComponent(
+          (u.user_metadata as any)?.full_name || u.email || 'User',
+        )}&background=1e293b&color=fb923c`,
+      plan,
+      credits,
+    };
   };
 
   const handleSession = async (session: Session | null) => {
@@ -175,11 +177,17 @@ const App: React.FC = () => {
       return;
     }
 
-    const p = await ensureProfile(u);
+    let p: UserProfile | null = null;
+
+    // Só tenta buscar do banco UMA vez por vida do app
+    if (!triedProfile.current) {
+      triedProfile.current = true;
+      p = await fetchProfile(u);
+    }
+
     if (!p) {
-      setProfile(null);
-      setFlowState('login');
-      return;
+      // se não existir ou não conseguir ler (RLS), usa profile em memória
+      p = buildFallbackProfile(u);
     }
 
     if (!p.credits) {
@@ -215,7 +223,7 @@ const App: React.FC = () => {
       } as unknown as User;
 
       const mockProfile: UserProfile = {
-        id: '00000000-0000-0000-0000-000000000000',
+        id: mockUser.id,
         full_name: 'Dev Maintainer',
         avatar_url: `https://ui-avatars.com/api/?name=Dev&background=1e293b&color=fb923c`,
         plan: 'AGENCY',
@@ -247,7 +255,7 @@ const App: React.FC = () => {
           history.replaceState(null, '', fullUrl.pathname + fullUrl.search);
         }
 
-        // PKCE: troca ?code=... por sessão (apenas uma vez)
+        // PKCE: troca ?code=... por sessão (só uma vez)
         const code = fullUrl.searchParams.get('code');
         const exchanged = sessionStorage.getItem('sb-code-exchanged') === '1';
         if (code && !exchanged) {
@@ -290,7 +298,7 @@ const App: React.FC = () => {
         } catch (e) {
           console.error('onAuthStateChange handleSession error:', e);
         }
-      }
+      },
     );
 
     return () => {
@@ -340,19 +348,32 @@ const App: React.FC = () => {
     if (!user || !profile) return <LoadingFallback />;
 
     switch (currentPage) {
-      case 'contentGenerator':       return <ContentGeneratorPage />;
-      case 'reelsGenerator':         return <ReelsGeneratorPage profile={profile} />;
-      case 'blogGenerator':          return <BlogGeneratorPage profile={profile} />;
-      case 'videoScriptGenerator':   return <VideoScriptGeneratorPage profile={profile} />;
-      case 'commentBot':             return <CommentBotPage />;
-      case 'history':                return <HistoryPage />;
-      case 'scheduling':             return <SchedulingPage />;
-      case 'campaigns':              return <CampaignsPage />;
-      case 'profile':                return <ProfilePage user={user} profile={profile} />;
-      case 'apiKeys':                return <ApiKeysPage />;
-      case 'billing':                return <BillingPage />;
-      case 'help':                   return <HelpPage />;
-      default:                       return <ContentGeneratorPage />;
+      case 'contentGenerator':
+        return <ContentGeneratorPage />;
+      case 'reelsGenerator':
+        return <ReelsGeneratorPage profile={profile} />;
+      case 'blogGenerator':
+        return <BlogGeneratorPage profile={profile} />;
+      case 'videoScriptGenerator':
+        return <VideoScriptGeneratorPage profile={profile} />;
+      case 'commentBot':
+        return <CommentBotPage />;
+      case 'history':
+        return <HistoryPage />;
+      case 'scheduling':
+        return <SchedulingPage />;
+      case 'campaigns':
+        return <CampaignsPage />;
+      case 'profile':
+        return <ProfilePage user={user} profile={profile} />;
+      case 'apiKeys':
+        return <ApiKeysPage />;
+      case 'billing':
+        return <BillingPage />;
+      case 'help':
+        return <HelpPage />;
+      default:
+        return <ContentGeneratorPage />;
     }
   };
 
@@ -429,11 +450,7 @@ const App: React.FC = () => {
     return <LoadingFallback />;
   };
 
-  return (
-    <Suspense fallback={<LoadingFallback />}>
-      {renderAppContent()}
-    </Suspense>
-  );
+  return <Suspense fallback={<LoadingFallback />}>{renderAppContent()}</Suspense>;
 };
 
 export default App;
