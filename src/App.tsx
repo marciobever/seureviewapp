@@ -306,19 +306,36 @@ const App: React.FC = () => {
     const guardAI = (node: React.ReactNode) => (HAS_GEMINI ? node : <MissingAIKey />);
 
     switch (currentPage) {
-      case 'contentGenerator': return guardAI(<ContentGeneratorPage />);
-      case 'reelsGenerator': return guardAI(<ReelsGeneratorPage profile={profile} />);
-      case 'blogGenerator': return guardAI(<BlogGeneratorPage profile={profile} />);
-      case 'videoScriptGenerator': return guardAI(<VideoScriptGeneratorPage profile={profile} />);
-      case 'commentBot': return <CommentBotPage />;
-      case 'history': return <HistoryPage />;
-      case 'scheduling': return <SchedulingPage />;
-      case 'campaigns': return <CampaignsPage />;
-      case 'profile': return <ProfilePage user={user} profile={profile} />;
-      case 'apiKeys': return <ApiKeysPage />;
-      case 'billing': return <BillingPage />;
-      case 'help': return <HelpPage />;
-      default: return guardAI(<ContentGeneratorPage />);
+      // 👇 Conteúdo Social SEM guardAI, pra sempre mostrar a busca + seletor
+      case 'contentGenerator':
+        return <ContentGeneratorPage />;
+
+      case 'reelsGenerator':
+        return guardAI(<ReelsGeneratorPage profile={profile} />);
+      case 'blogGenerator':
+        return guardAI(<BlogGeneratorPage profile={profile} />);
+      case 'videoScriptGenerator':
+        return guardAI(<VideoScriptGeneratorPage profile={profile} />);
+      case 'commentBot':
+        return <CommentBotPage />;
+      case 'history':
+        return <HistoryPage />;
+      case 'scheduling':
+        return <SchedulingPage />;
+      case 'campaigns':
+        return <CampaignsPage />;
+      case 'profile':
+        return <ProfilePage user={user} profile={profile} />;
+      case 'apiKeys':
+        return <ApiKeysPage />;
+      case 'billing':
+        return <BillingPage />;
+      case 'help':
+        return <HelpPage />;
+
+      // fallback: volta pro ContentGenerator
+      default:
+        return <ContentGeneratorPage />;
     }
   };
 
