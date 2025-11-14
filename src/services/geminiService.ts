@@ -1,5 +1,5 @@
 // src/services/geminiService.ts
-// STUB TEMPORÁRIO SEM GEMINI – NÃO IMPORTA @google/genai, NEM USA API KEY
+// IMPLEMENTAÇÃO SEM GEMINI – NÃO IMPORTA @google/genai, NEM USA API KEY
 
 import { supabase } from "./supabase";
 import type {
@@ -11,7 +11,7 @@ import type {
 
 /**
  * Busca produtos.
- * - Shopee: continua usando o fluxo via n8n (precisa das keys do usuário).
+ * - Shopee: usa fluxo via n8n (precisa das keys do usuário em user_api_keys).
  * - Outros providers: IA desativada → erro amigável.
  */
 export const searchProductOptions = async (
@@ -59,9 +59,15 @@ export const searchProductOptions = async (
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          userId: user.id,
+          // orgId: se você tiver org no Supabase, pode preencher aqui depois
           query: productQuery,
-          appId: shopeeKeys.shopeeAppId,
-          password: shopeeKeys.shopeePassword,
+          filters: {
+            limit: 24,
+          },
+          sort: "relevance",
+          country: "BR",
+          // appId/password não precisam ir se o n8n já lê isso do Postgres
         }),
       });
 
@@ -71,11 +77,42 @@ export const searchProductOptions = async (
         );
       }
 
-      const products = await response.json();
+      const json = await response.json();
 
-      if (!Array.isArray(products)) {
-        throw new Error("A resposta da busca da Shopee não é um array válido.");
+      // Se seu n8n já retorna direto um array de produtos, adapte aqui.
+      // Vou assumir que ele retorna algo como { items: [...] }.
+      const items = Array.isArray(json)
+        ? json
+        : Array.isArray(json.items)
+        ? json.items
+        : [];
+
+      if (!Array.isArray(items) || items.length === 0) {
+        throw new Error("Nenhum produto encontrado para esta busca.");
       }
+
+      // Mapear o formato do n8n para o ProductOption esperado pela UI
+      const products: ProductOption[] = items.map((p: any) => ({
+        productName: p.title ?? p.nome ?? "Produto",
+        imageUrl: p.image ?? p.image_url ?? "",
+        price:
+          typeof p.price === "number"
+            ? `R$ ${p.price.toFixed(2).replace(".", ",")}`
+            : p.price_str ?? "—",
+        rating: p.rating ?? 0,
+        commission: p.commission_percent
+          ? `${p.commission_percent.toFixed(1)}%`
+          : p.commission
+          ? `${p.commission}%`
+          : "—",
+        salesVolume: p.sales_count
+          ? `${p.sales_count} vendidos`
+          : p.vendas
+          ? `${p.vendas} vendidos`
+          : "",
+        productUrl: p.url ?? p.canonicalUrl ?? p.product_link ?? "",
+        // se seu ProductOption tiver mais campos, adicione aqui
+      }));
 
       return products;
     } catch (error: any) {
@@ -95,24 +132,173 @@ export const searchProductOptions = async (
 };
 
 /**
- * As funções abaixo estão stubadas: não chamam Gemini.
- * Assim o app compila/roda, mas você não depende da chave.
+ * Etapa 2: Gera conteúdo + shortlink para um produto selecionado, via n8n.
+ * Aqui NÃO usamos Gemini; apenas:
+ * - chamamos o webhook shopee_subids para gerar link rastreável
+ * - montamos uma legenda/CTA simples no front
  */
-
 export const generatePostForProduct = async (
-  _product: ProductOption,
-  _provider: string
+  product: ProductOption,
+  provider: string
 ): Promise<PostContent & { productImageUrl: string }> => {
-  throw new Error(
-    "Geração automática de conteúdo ainda não está configurada (Gemini desativado)."
-  );
+  if (provider !== "Shopee") {
+    throw new Error(
+      "No momento, a geração de conteúdo só está disponível para produtos da Shopee."
+    );
+  }
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (!user) {
+    throw new Error("Usuário não autenticado. Por favor, faça login.");
+  }
+
+  // Chama o webhook que gera shortlink + salva/agenda no n8n
+  const webhookUrl = "https://n8n.seureview.com.br/webhook/shopee_subids";
+
+  const body = {
+    base_url: product.productUrl,
+    platform: "instagram", // ou deixe dinâmico depois (instagram/facebook/etc)
+    product: {
+      id: undefined, // se tiver id interno aí no ProductOption, jogue aqui
+      title: product.productName,
+      // tentar extrair número do price
+      price: (() => {
+        const match = String(product.price)
+          .replace(/[^\d,]/g, "")
+          .replace(",", ".");
+        const n = Number(match);
+        return Number.isFinite(n) ? n : undefined;
+      })(),
+      rating: product.rating,
+      image: product.imageUrl,
+      url: product.productUrl,
+    },
+    userId: user.id,
+    orgId: null, // se tiver org no Supabase, preenche depois
+  };
+
+  const res = await fetch(webhookUrl, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  if (!res.ok) {
+    throw new Error(
+      `O serviço de geração de link da Shopee (n8n) retornou um erro: ${res.status}`
+    );
+  }
+
+  const json = await res.json();
+
+  // Estrutura esperada do n8n (node "Map for API"):
+  // {
+  //   items: [
+  //     {
+  //       id, title, price, price_str, rating,
+  //       image, marketplace, canonicalUrl, url, links: { [platform]: url }
+  //     }
+  //   ],
+  //   ...
+  // }
+  const firstItem = Array.isArray(json.items) ? json.items[0] : null;
+  const affiliateUrl: string =
+    firstItem?.url || firstItem?.links?.instagram || product.productUrl;
+
+  // Monta um PostContent simples só pra UI funcionar
+  const socialPostTitle = `Oferta Shopee: ${product.productName}`;
+  const callToAction = "Clique no link e aproveite essa oferta exclusiva!";
+
+  const socialPostBody = [
+    `🔥 ${product.productName}`,
+    "",
+    product.price ? `💰 Preço: ${product.price}` : "",
+    product.rating ? `⭐ Avaliação: ${product.rating.toFixed(1)} / 5` : "",
+    "",
+    `${callToAction}`,
+    affiliateUrl ? `👉 ${affiliateUrl}` : "",
+    "",
+    "#Shopee #Oferta #Promoção #Achadinhos",
+  ]
+    .filter(Boolean)
+    .join("\n");
+
+  const postTemplates: PostContent["postTemplates"] = [
+    {
+      name: "Foco em Benefícios",
+      body: [
+        `✨ Descubra por que ${product.productName} está fazendo sucesso na Shopee!`,
+        "",
+        "• Qualidade incrível pelo melhor preço",
+        "• Perfeito para o seu dia a dia",
+        "",
+        `${callToAction}`,
+        affiliateUrl ? `👉 ${affiliateUrl}` : "",
+        "",
+        "#Shopee #Achadinhos #Benefícios",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+    {
+      name: "Urgência / Escassez",
+      body: [
+        `⏰ Últimas unidades de ${product.productName} com preço especial!`,
+        "",
+        "Não deixe para depois, as melhores ofertas acabam rápido.",
+        "",
+        `${callToAction}`,
+        affiliateUrl ? `👉 ${affiliateUrl}` : "",
+        "",
+        "#Promoção #SóHoje #CorreAproveitar",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+    {
+      name: "Prova Social",
+      body: [
+        `📈 ${product.productName} está entre os queridinhos da Shopee!`,
+        "",
+        "Avaliações positivas e muitos pedidos entregues. Se tanta gente aprovou, tem um motivo 😉",
+        "",
+        `${callToAction}`,
+        affiliateUrl ? `👉 ${affiliateUrl}` : "",
+        "",
+        "#ProvaSocial #MaisVendidos #ShopeeBrasil",
+      ]
+        .filter(Boolean)
+        .join("\n"),
+    },
+  ];
+
+  const postContent: PostContent = {
+    socialPostTitle,
+    socialPostBody,
+    affiliateUrl,
+    callToAction,
+    postTemplates,
+  };
+
+  return {
+    ...postContent,
+    productImageUrl: product.imageUrl,
+  };
 };
+
+/**
+ * As funções abaixo continuam stubadas: não chamam IA.
+ * Assim o app compila/roda, mas você não depende de chave nenhuma.
+ */
 
 export const generateReelsVideo = async (
   _prompt: string
 ): Promise<string> => {
   throw new Error(
-    "Geração de vídeo (Reels) ainda não está configurada (Gemini desativado)."
+    "Geração de vídeo (Reels) ainda não está configurada (IA desativada)."
   );
 };
 
@@ -120,7 +306,7 @@ export const generateMarketingImage = async (
   _prompt: string
 ): Promise<string> => {
   throw new Error(
-    "Geração de imagens de marketing ainda não está configurada (Gemini desativado)."
+    "Geração de imagens de marketing ainda não está configurada (IA desativada)."
   );
 };
 
@@ -140,7 +326,7 @@ export const generateBlogPost = async (
   _topic: string
 ): Promise<BlogPost> => {
   throw new Error(
-    "Gerador de artigos de blog ainda não está configurado (Gemini desativado)."
+    "Gerador de artigos de blog ainda não está configurado (IA desativada)."
   );
 };
 
@@ -149,7 +335,7 @@ export const generateVideoScript = async (
   _videoType: "short" | "long"
 ): Promise<VideoScript> => {
   throw new Error(
-    "Gerador de roteiros de vídeo ainda não está configurado (Gemini desativado)."
+    "Gerador de roteiros de vídeo ainda não está configurado (IA desativada)."
   );
 };
 
@@ -158,6 +344,6 @@ export const compareProducts = async (
   _product2: ProductOption
 ): Promise<string> => {
   throw new Error(
-    "Comparador de produtos ainda não está configurado (Gemini desativado)."
+    "Comparador de produtos ainda não está configurado (IA desativada)."
   );
 };
