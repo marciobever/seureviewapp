@@ -199,6 +199,8 @@ const App: React.FC = () => {
     const storedPlan = sessionStorage.getItem('selectedPlan');
     if (storedPlan) setSelectedPlan(storedPlan);
 
+    let cancelled = false;
+
     const boot = async () => {
       try {
         setLoading(true);
@@ -231,21 +233,39 @@ const App: React.FC = () => {
 
         const { data, error } = await supabase!.auth.getSession();
         if (error) console.error('getSession error:', error);
-        await handleSession(data?.session ?? null);
+        if (!cancelled) {
+          await handleSession(data?.session ?? null);
+        }
       } finally {
-        setLoading(false);
+        if (!cancelled) setLoading(false);
       }
     };
 
     boot();
 
-    const { data: authListener } = supabase!.auth.onAuthStateChange(async (_event, session) => {
-      setLoading(true);
-      await handleSession(session);
-      setLoading(false);
-    });
+    const { data: authListener } = supabase!.auth.onAuthStateChange(
+      async (event, session) => {
+        try {
+          // 🎯 CORREÇÃO: não mostrar spinner em refresh de token (quando só troca de aba, por exemplo)
+          if (event === 'TOKEN_REFRESHED') {
+            if (!cancelled) {
+              await handleSession(session);
+            }
+            return;
+          }
+
+          if (!cancelled) setLoading(true);
+          await handleSession(session);
+        } catch (e) {
+          console.error('onAuthStateChange handleSession error:', e);
+        } finally {
+          if (!cancelled) setLoading(false);
+        }
+      }
+    );
 
     return () => {
+      cancelled = true;
       authListener.subscription.unsubscribe();
     };
   }, [forceMarketing]);
@@ -367,7 +387,13 @@ const App: React.FC = () => {
     }
 
     if (flowState === 'payment' && selectedPlan) {
-      return <PaymentPage planName={selectedPlan} onPaymentSuccess={handlePaymentSuccess} onBack={() => setFlowState('login')} />;
+      return (
+        <PaymentPage
+          planName={selectedPlan}
+          onPaymentSuccess={handlePaymentSuccess}
+          onBack={() => setFlowState('login')}
+        />
+      );
     }
 
     if (flowState === 'contact') {
