@@ -1,26 +1,63 @@
+// src/App.tsx
 import React, { useState, useEffect, useRef, Suspense, lazy } from 'react';
 import { supabase, supabaseConfigured } from './services/supabase';
 import type { User, Session } from '@supabase/supabase-js';
 
 // Lazy load components
-const LandingPage = lazy(() => import('./components/LandingPage').then(m => ({ default: m.LandingPage })));
-const LoginPage = lazy(() => import('./components/LoginPage').then(m => ({ default: m.LoginPage })));
-const RegistrationPage = lazy(() => import('../components/RegistrationPage').then(m => ({ default: m.RegistrationPage })));
-const DashboardLayout = lazy(() => import('./components/DashboardLayout').then(m => ({ default: m.DashboardLayout })));
-const ContentGeneratorPage = lazy(() => import('./components/ContentGeneratorPage').then(m => ({ default: m.ContentGeneratorPage })));
-const ReelsGeneratorPage = lazy(() => import('../components/ReelsGeneratorPage').then(m => ({ default: m.ReelsGeneratorPage })));
-const CommentBotPage = lazy(() => import('./components/CommentBotPage').then(m => ({ default: m.CommentBotPage })));
-const HistoryPage = lazy(() => import('./components/HistoryPage').then(m => ({ default: m.HistoryPage })));
-const ProfilePage = lazy(() => import('../components/ProfilePage').then(m => ({ default: m.ProfilePage })));
-const ApiKeysPage = lazy(() => import('./components/ApiKeysPage').then(m => ({ default: m.ApiKeysPage })));
-const BillingPage = lazy(() => import('./components/BillingPage').then(m => ({ default: m.BillingPage })));
-const PaymentPage = lazy(() => import('../components/PaymentPage').then(m => ({ default: m.PaymentPage })));
-const HelpPage = lazy(() => import('./components/HelpPage').then(m => ({ default: m.HelpPage })));
-const ContactPage = lazy(() => import('./components/ContactPage').then(m => ({ default: m.ContactPage })));
-const SchedulingPage = lazy(() => import('../components/SchedulingPage').then(m => ({ default: m.SchedulingPage })));
-const BlogGeneratorPage = lazy(() => import('./components/BlogGeneratorPage').then(m => ({ default: m.BlogGeneratorPage })));
-const VideoScriptGeneratorPage = lazy(() => import('../components/VideoScriptGeneratorPage').then(m => ({ default: m.VideoScriptGeneratorPage })));
-const CampaignsPage = lazy(() => import('./components/CampaignsPage').then(m => ({ default: m.CampaignsPage })));
+const LandingPage = lazy(() =>
+  import('./components/LandingPage').then(m => ({ default: m.LandingPage })),
+);
+const LoginPage = lazy(() =>
+  import('./components/LoginPage').then(m => ({ default: m.LoginPage })),
+);
+const RegistrationPage = lazy(() =>
+  import('../components/RegistrationPage').then(m => ({ default: m.RegistrationPage })),
+);
+const DashboardLayout = lazy(() =>
+  import('./components/DashboardLayout').then(m => ({ default: m.DashboardLayout })),
+);
+const ContentGeneratorPage = lazy(() =>
+  import('./components/ContentGeneratorPage').then(m => ({ default: m.ContentGeneratorPage })),
+);
+const ReelsGeneratorPage = lazy(() =>
+  import('../components/ReelsGeneratorPage').then(m => ({ default: m.ReelsGeneratorPage })),
+);
+const CommentBotPage = lazy(() =>
+  import('./components/CommentBotPage').then(m => ({ default: m.CommentBotPage })),
+);
+const HistoryPage = lazy(() =>
+  import('./components/HistoryPage').then(m => ({ default: m.HistoryPage })),
+);
+const ProfilePage = lazy(() =>
+  import('../components/ProfilePage').then(m => ({ default: m.ProfilePage })),
+);
+const ApiKeysPage = lazy(() =>
+  import('./components/ApiKeysPage').then(m => ({ default: m.ApiKeysPage })),
+);
+const BillingPage = lazy(() =>
+  import('./components/BillingPage').then(m => ({ default: m.BillingPage })),
+);
+const PaymentPage = lazy(() =>
+  import('../components/PaymentPage').then(m => ({ default: m.PaymentPage })),
+);
+const HelpPage = lazy(() =>
+  import('./components/HelpPage').then(m => ({ default: m.HelpPage })),
+);
+const ContactPage = lazy(() =>
+  import('./components/ContactPage').then(m => ({ default: m.ContactPage })),
+);
+const SchedulingPage = lazy(() =>
+  import('../components/SchedulingPage').then(m => ({ default: m.SchedulingPage })),
+);
+const BlogGeneratorPage = lazy(() =>
+  import('./components/BlogGeneratorPage').then(m => ({ default: m.BlogGeneratorPage })),
+);
+const VideoScriptGeneratorPage = lazy(() =>
+  import('../components/VideoScriptGeneratorPage').then(m => ({ default: m.VideoScriptGeneratorPage })),
+);
+const CampaignsPage = lazy(() =>
+  import('./components/CampaignsPage').then(m => ({ default: m.CampaignsPage })),
+);
 
 export type Page =
   | 'contentGenerator' | 'reelsGenerator' | 'commentBot' | 'history'
@@ -62,10 +99,9 @@ const SupabaseConfigError: React.FC = () => (
 const App: React.FC = () => {
   if (!supabaseConfigured) return <SupabaseConfigError />;
 
-  // ====== roteamento simples por pathname ======
+  // Roteamento simples por pathname
   const url = new URL(window.location.href);
   const isAppPath = url.pathname.startsWith('/app') || url.searchParams.get('app') === '1';
-  // Se NÃO for /app, mostramos SEMPRE a landing (corrige Safari mostrando login)
   const forceMarketing = !isAppPath;
 
   const [flowState, setFlowState] = useState<AppFlowState>(forceMarketing ? 'landing' : 'login');
@@ -75,7 +111,6 @@ const App: React.FC = () => {
   const [currentPage, setCurrentPage] = useState<Page>('contentGenerator');
   const [selectedPlan, setSelectedPlan] = useState<string | null>(null);
 
-  // anti-loop: limite de tentativas para obter/criar profile
   const profileTries = useRef(0);
   const MAX_PROFILE_TRIES = 3;
 
@@ -105,7 +140,6 @@ const App: React.FC = () => {
       if (again) return again;
     }
 
-    // fallback de INSERT — só vai funcionar se as policies permitirem
     try {
       const planFromReg = (sessionStorage.getItem('selectedPlan') || 'FREE') as UserProfile['plan'];
       const credits = planFromReg === 'PRO' ? 50 : planFromReg === 'AGENCY' ? 150 : 5;
@@ -160,8 +194,10 @@ const App: React.FC = () => {
 
   // --------- boot + listeners ----------
   useEffect(() => {
-    // Se estamos na landing (marketing), não mexe com Supabase aqui.
-    if (forceMarketing) return;
+    if (forceMarketing) {
+      setLoading(false);
+      return;
+    }
 
     const urlParams = new URLSearchParams(window.location.search);
     if (urlParams.get('dev') === 'true') {
@@ -204,17 +240,29 @@ const App: React.FC = () => {
 
         const fullUrl = new URL(window.location.href);
 
-        // Trata erro vindo no fragmento (hash)
         if (fullUrl.hash && fullUrl.hash.includes('error=')) {
           const params = new URLSearchParams(fullUrl.hash.replace(/^#/, ''));
           console.error('OAuth error:', params.get('error_description') || 'unknown');
           history.replaceState(null, '', fullUrl.pathname + fullUrl.search);
         }
 
-        // A partir daqui, deixamos o Supabase cuidar do código PKCE
         const { data, error } = await supabase!.auth.getSession();
+
         if (error) {
           console.error('getSession error:', error);
+          const msg = (error as any)?.message || '';
+          if (msg.includes('Refresh Token')) {
+            try {
+              await supabase!.auth.signOut();
+            } catch (e) {
+              console.warn('signOut after invalid refresh token failed:', e);
+            }
+          }
+          if (!cancelled) {
+            setUser(null);
+            setProfile(null);
+            setFlowState('login');
+          }
         } else if (!cancelled) {
           await handleSession(data?.session ?? null);
         }
@@ -228,15 +276,17 @@ const App: React.FC = () => {
     const { data: authListener } = supabase!.auth.onAuthStateChange(
       async (event, session) => {
         try {
-          // Não travar a tela em loading em eventos de refresh
-          if (event === 'INITIAL_SESSION' || event === 'TOKEN_REFRESHED') {
+          if (event === 'TOKEN_REFRESHED') {
             await handleSession(session);
             return;
           }
 
+          setLoading(true);
           await handleSession(session);
         } catch (e) {
           console.error('onAuthStateChange handleSession error:', e);
+        } finally {
+          setLoading(false);
         }
       }
     );
@@ -251,7 +301,6 @@ const App: React.FC = () => {
   const handleSelectPlan = (planName: string) => {
     setSelectedPlan(planName);
     sessionStorage.setItem('selectedPlan', planName);
-    // quando estiver na landing, manda para fluxo do app
     window.location.href = '/app';
   };
 
@@ -281,50 +330,37 @@ const App: React.FC = () => {
     setCurrentPage('contentGenerator');
     sessionStorage.removeItem('selectedPlan');
     setSelectedPlan(null);
-    window.location.href = '/'; // volta para landing
+    window.location.href = '/';
   };
 
-  // --------- render ----------
+  // --------- render páginas ----------
   const renderCurrentPage = () => {
     if (!user || !profile) return <LoadingFallback />;
 
     switch (currentPage) {
-      case 'contentGenerator': return <ContentGeneratorPage />;
-      case 'reelsGenerator': return <ReelsGeneratorPage profile={profile} />;
-      case 'blogGenerator': return <BlogGeneratorPage profile={profile} />;
-      case 'videoScriptGenerator': return <VideoScriptGeneratorPage profile={profile} />;
-      case 'commentBot': return <CommentBotPage />;
-      case 'history': return <HistoryPage />;
-      case 'scheduling': return <SchedulingPage />;
-      case 'campaigns': return <CampaignsPage />;
-      case 'profile': return <ProfilePage user={user} profile={profile} />;
-      case 'apiKeys': return <ApiKeysPage />;
-      case 'billing': return <BillingPage />;
-      case 'help': return <HelpPage />;
-      default: return <ContentGeneratorPage />;
+      case 'contentGenerator':       return <ContentGeneratorPage />;
+      case 'reelsGenerator':         return <ReelsGeneratorPage profile={profile} />;
+      case 'blogGenerator':          return <BlogGeneratorPage profile={profile} />;
+      case 'videoScriptGenerator':   return <VideoScriptGeneratorPage profile={profile} />;
+      case 'commentBot':             return <CommentBotPage />;
+      case 'history':                return <HistoryPage />;
+      case 'scheduling':             return <SchedulingPage />;
+      case 'campaigns':              return <CampaignsPage />;
+      case 'profile':                return <ProfilePage user={user} profile={profile} />;
+      case 'apiKeys':                return <ApiKeysPage />;
+      case 'billing':                return <BillingPage />;
+      case 'help':                   return <HelpPage />;
+      default:                       return <ContentGeneratorPage />;
     }
   };
 
   const renderAppContent = () => {
-    // LANDING sempre que não for /app
     if (forceMarketing) {
       return (
         <LandingPage
           onSelectPlan={handleSelectPlan}
           onShowContact={handleShowContact}
           onLoginClick={handleLoginClick}
-        />
-      );
-    }
-
-    // 🔑 PRIORIDADE: se o fluxo é login, mostra tela de login, mesmo com loading true
-    if (flowState === 'login') {
-      return (
-        <LoginPage
-          onGoToRegister={() => {
-            if (!selectedPlan) setSelectedPlan('PRO');
-            setFlowState('register');
-          }}
         />
       );
     }
@@ -377,11 +413,26 @@ const App: React.FC = () => {
       return <ContactPage onBack={() => setFlowState('login')} />;
     }
 
-    // fallback
+    if (flowState === 'login') {
+      return (
+        <LoginPage
+          onGoToRegister={() => {
+            if (!selectedPlan) setSelectedPlan('PRO');
+            setSelectedPlan('PRO');
+            setFlowState('register');
+          }}
+        />
+      );
+    }
+
     return <LoadingFallback />;
   };
 
-  return <Suspense fallback={<LoadingFallback />}>{renderAppContent()}</Suspense>;
+  return (
+    <Suspense fallback={<LoadingFallback />}>
+      {renderAppContent()}
+    </Suspense>
+  );
 };
 
 export default App;
