@@ -334,3 +334,13 @@ export const generateVideoScript = async (
     "Gerador de roteiros de vídeo ainda não está configurado (IA desativada)."
   );
 };
+export const compareProducts = async (
+  _product1: ProductOption,
+  _product2: ProductOption
+): Promise<string> => {
+  // Stub apenas para não quebrar o build.
+  // Se algum lugar ainda chamar o comparador, vai aparecer essa mensagem.
+  throw new Error(
+    "Comparador de produtos foi desativado nesta versão. Use apenas a geração de postagens."
+  );
+};
