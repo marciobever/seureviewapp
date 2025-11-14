@@ -2,11 +2,16 @@
 // STUB TEMPORÁRIO SEM GEMINI – NÃO IMPORTA @google/genai, NEM USA API KEY
 
 import { supabase } from "./supabase";
-import type { ProductOption, PostContent, BlogPost, VideoScript } from "../types";
+import type {
+  ProductOption,
+  PostContent,
+  BlogPost,
+  VideoScript,
+} from "../types";
 
 /**
  * Busca produtos.
- * - Shopee: continua usando seu fluxo via n8n (precisa das keys do usuário).
+ * - Shopee: continua usando o fluxo via n8n (precisa das keys do usuário).
  * - Outros providers: IA desativada → erro amigável.
  */
 export const searchProductOptions = async (
@@ -23,6 +28,7 @@ export const searchProductOptions = async (
       const {
         data: { user },
       } = await supabase.auth.getUser();
+
       if (!user) {
         throw new Error("Usuário não autenticado. Por favor, faça login.");
       }
@@ -33,11 +39,13 @@ export const searchProductOptions = async (
         .eq("user_id", user.id)
         .single();
 
+      // Se deu erro diferente de "nenhuma linha encontrada"
       if (dbError && dbError.code !== "PGRST116") {
         throw dbError;
       }
 
       const shopeeKeys = userApiKeys?.keys as any;
+
       if (!shopeeKeys?.shopeeAppId || !shopeeKeys?.shopeePassword) {
         throw new Error(
           "Chaves de API da Shopee não encontradas. " +
@@ -46,6 +54,7 @@ export const searchProductOptions = async (
       }
 
       const webhookUrl = "https://n8n.seureview.com.br/webhook/shopee_search";
+
       const response = await fetch(webhookUrl, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -63,13 +72,15 @@ export const searchProductOptions = async (
       }
 
       const products = await response.json();
+
       if (!Array.isArray(products)) {
         throw new Error("A resposta da busca da Shopee não é um array válido.");
       }
+
       return products;
     } catch (error: any) {
       console.error("Error during Shopee product search:", error);
-      const errorMessage = error.message || "Ocorreu um erro desconhecido.";
+      const errorMessage = error?.message || "Ocorreu um erro desconhecido.";
       throw new Error(
         `Falha ao buscar produtos da Shopee. Detalhes: ${errorMessage}`
       );
@@ -78,7 +89,8 @@ export const searchProductOptions = async (
 
   // --- demais providers: IA desligada temporariamente ---
   throw new Error(
-    "Os geradores de IA ainda não estão configurados neste ambiente (Gemini desativado)."
+    "Os geradores de IA ainda não estão configurados neste ambiente (Gemini desativado). " +
+      "Por enquanto, use apenas a opção Shopee com suas chaves de API."
   );
 };
 
@@ -88,7 +100,7 @@ export const searchProductOptions = async (
  */
 
 export const generatePostForProduct = async (
-  product: ProductOption,
+  _product: ProductOption,
   _provider: string
 ): Promise<PostContent & { productImageUrl: string }> => {
   throw new Error(
@@ -96,7 +108,9 @@ export const generatePostForProduct = async (
   );
 };
 
-export const generateReelsVideo = async (_prompt: string): Promise<string> => {
+export const generateReelsVideo = async (
+  _prompt: string
+): Promise<string> => {
   throw new Error(
     "Geração de vídeo (Reels) ainda não está configurada (Gemini desativado)."
   );
@@ -114,6 +128,7 @@ export const getOptimizationSuggestions = async (
   _title: string,
   _body: string
 ): Promise<string[]> => {
+  // Stub bonitinho pra UI não quebrar
   return [
     "Otimize o primeiro parágrafo com um gancho mais forte.",
     "Destaque um benefício concreto logo no começo.",
@@ -121,7 +136,9 @@ export const getOptimizationSuggestions = async (
   ];
 };
 
-export const generateBlogPost = async (_topic: string): Promise<BlogPost> => {
+export const generateBlogPost = async (
+  _topic: string
+): Promise<BlogPost> => {
   throw new Error(
     "Gerador de artigos de blog ainda não está configurado (Gemini desativado)."
   );
