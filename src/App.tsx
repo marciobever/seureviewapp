@@ -59,9 +59,6 @@ const SupabaseConfigError: React.FC = () => (
   </div>
 );
 
-// ====== helpers de ambiente (evita quebrar se faltar a key de IA) ======
-const HAS_GEMINI = !!(import.meta as any)?.env?.VITE_GEMINI_API_KEY;
-
 const App: React.FC = () => {
   if (!supabaseConfigured) return <SupabaseConfigError />;
 
@@ -288,37 +285,36 @@ const App: React.FC = () => {
   };
 
   // --------- render ----------
-  const MissingAIKey: React.FC = () => (
-    <div className="min-h-screen bg-slate-950 text-gray-200 flex items-center justify-center p-6">
-      <div className="max-w-lg text-center bg-slate-800/60 border border-slate-700 rounded-xl p-8">
-        <h2 className="text-xl font-semibold mb-2">Chave da IA ausente</h2>
-        <p className="text-gray-300">
-          Defina <code>VITE_GEMINI_API_KEY</code> no ambiente de produção (Coolify) para usar os geradores.
-        </p>
-      </div>
-    </div>
-  );
-
   const renderCurrentPage = () => {
     if (!user || !profile) return <LoadingFallback />;
 
-    // Protege páginas que usam IA quando a key não existe
-    const guardAI = (node: React.ReactNode) => (HAS_GEMINI ? node : <MissingAIKey />);
-
     switch (currentPage) {
-      case 'contentGenerator': return guardAI(<ContentGeneratorPage />);
-      case 'reelsGenerator': return guardAI(<ReelsGeneratorPage profile={profile} />);
-      case 'blogGenerator': return guardAI(<BlogGeneratorPage profile={profile} />);
-      case 'videoScriptGenerator': return guardAI(<VideoScriptGeneratorPage profile={profile} />);
-      case 'commentBot': return <CommentBotPage />;
-      case 'history': return <HistoryPage />;
-      case 'scheduling': return <SchedulingPage />;
-      case 'campaigns': return <CampaignsPage />;
-      case 'profile': return <ProfilePage user={user} profile={profile} />;
-      case 'apiKeys': return <ApiKeysPage />;
-      case 'billing': return <BillingPage />;
-      case 'help': return <HelpPage />;
-      default: return guardAI(<ContentGeneratorPage />);
+      case 'contentGenerator':
+        return <ContentGeneratorPage />;
+      case 'reelsGenerator':
+        return <ReelsGeneratorPage profile={profile} />;
+      case 'blogGenerator':
+        return <BlogGeneratorPage profile={profile} />;
+      case 'videoScriptGenerator':
+        return <VideoScriptGeneratorPage profile={profile} />;
+      case 'commentBot':
+        return <CommentBotPage />;
+      case 'history':
+        return <HistoryPage />;
+      case 'scheduling':
+        return <SchedulingPage />;
+      case 'campaigns':
+        return <CampaignsPage />;
+      case 'profile':
+        return <ProfilePage user={user} profile={profile} />;
+      case 'apiKeys':
+        return <ApiKeysPage />;
+      case 'billing':
+        return <BillingPage />;
+      case 'help':
+        return <HelpPage />;
+      default:
+        return <ContentGeneratorPage />;
     }
   };
 
