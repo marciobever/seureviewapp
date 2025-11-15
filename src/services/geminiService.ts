@@ -9,6 +9,15 @@ import type {
   VideoScript,
 } from "../types";
 
+// Mesmos canais que o painel usa
+export type SocialPlatform =
+  | "instagram"
+  | "facebook"
+  | "x"
+  | "tiktok"
+  | "whatsapp"
+  | "web";
+
 /**
  * Busca produtos.
  * - Shopee: usa fluxo via n8n (precisa das keys do usuário em user_api_keys).
@@ -134,10 +143,14 @@ export const searchProductOptions = async (
  * Aqui NÃO usamos Gemini; apenas:
  * - chamamos o webhook shopee_subids para gerar link rastreável
  * - montamos uma legenda/CTA simples no front
+ *
+ * Agora recebe também o `platform` (instagram, facebook, x, web, etc)
+ * para o n8n escolher o SubID correto.
  */
 export const generatePostForProduct = async (
   product: ProductOption,
-  provider: string
+  provider: string,
+  platform: SocialPlatform = "instagram"
 ): Promise<PostContent & { productImageUrl: string }> => {
   if (provider !== "Shopee") {
     throw new Error(
@@ -166,7 +179,7 @@ export const generatePostForProduct = async (
 
   const body = {
     base_url: product.productUrl,
-    platform: "instagram", // depois dá pra deixar dinâmico (instagram/facebook/etc)
+    platform, // <- agora dinâmico, usado pelo n8n para escolher o SubID
     product: {
       id: undefined, // se tiver id interno no ProductOption, joga aqui
       title: product.productName,
@@ -198,14 +211,20 @@ export const generatePostForProduct = async (
   //   items: [
   //     {
   //       id, title, price, price_str, rating,
-  //       image, marketplace, canonicalUrl, url, links: { [platform]: url }
+  //       image, marketplace, canonicalUrl, url,
+  //       links: { [platform]: url }
   //     }
   //   ],
   //   ...
   // }
   const firstItem = Array.isArray(json.items) ? json.items[0] : null;
+  const links = (firstItem?.links ?? {}) as Record<string, string | undefined>;
+
   const affiliateUrl: string =
-    firstItem?.url || firstItem?.links?.instagram || product.productUrl;
+    links[platform] ||
+    firstItem?.url ||
+    firstItem?.canonicalUrl ||
+    product.productUrl;
 
   const socialPostTitle = `Oferta Shopee: ${product.productName}`;
   const callToAction = "Clique no link e aproveite essa oferta exclusiva!";
@@ -334,12 +353,12 @@ export const generateVideoScript = async (
     "Gerador de roteiros de vídeo ainda não está configurado (IA desativada)."
   );
 };
+
 export const compareProducts = async (
   _product1: ProductOption,
   _product2: ProductOption
 ): Promise<string> => {
   // Stub apenas para não quebrar o build.
-  // Se algum lugar ainda chamar o comparador, vai aparecer essa mensagem.
   throw new Error(
     "Comparador de produtos foi desativado nesta versão. Use apenas a geração de postagens."
   );
