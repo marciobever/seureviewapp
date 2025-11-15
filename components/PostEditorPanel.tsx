@@ -4,6 +4,7 @@ import { generatePostForProduct, getOptimizationSuggestions } from '../services/
 import { ImageGeneratorModal } from './ImageGeneratorModal';
 
 type Tab = 'editor' | 'automation' | 'scheduling';
+type Channel = 'instagram' | 'facebook' | 'x' | 'tiktok' | 'whatsapp' | 'web';
 
 interface PostEditorPanelProps {
   product: ProductOption;
@@ -70,6 +71,9 @@ export const PostEditorPanel: React.FC<PostEditorPanelProps> = ({
   const [activeTab, setActiveTab] = useState<Tab>('editor');
   const [suggestions, setSuggestions] = useState<string[]>([]);
   const [isImageModalOpen, setIsImageModalOpen] = useState(false);
+
+  // Canal escolhido (em breve usado para SubIDs/shortlink)
+  const [channel, setChannel] = useState<Channel>('instagram');
 
   // Automation state
   const [botKeyword, setBotKeyword] = useState('QUERO');
@@ -248,6 +252,25 @@ export const PostEditorPanel: React.FC<PostEditorPanelProps> = ({
     </button>
   );
 
+  const renderChannelLabel = (ch: Channel) => {
+    switch (ch) {
+      case 'instagram':
+        return 'Instagram';
+      case 'facebook':
+        return 'Facebook';
+      case 'x':
+        return 'X (Twitter)';
+      case 'tiktok':
+        return 'TikTok';
+      case 'whatsapp':
+        return 'WhatsApp';
+      case 'web':
+        return 'Web / Site';
+      default:
+        return ch;
+    }
+  };
+
   return (
     <>
       {/* backdrop */}
@@ -317,6 +340,29 @@ export const PostEditorPanel: React.FC<PostEditorPanelProps> = ({
               {/* TAB: EDITOR */}
               {activeTab === 'editor' && (
                 <div className="space-y-6 animate-fade-in">
+                  {/* seletor de canal */}
+                  <div className="flex items-center justify-between gap-3">
+                    <span className="text-sm font-medium text-gray-300">
+                      Onde você vai publicar este post?
+                    </span>
+                    <div className="inline-flex bg-slate-900/70 border border-slate-600 rounded-full p-1 text-xs">
+                      {(['instagram', 'facebook', 'x', 'tiktok', 'whatsapp', 'web'] as Channel[]).map((ch) => (
+                        <button
+                          key={ch}
+                          type="button"
+                          onClick={() => setChannel(ch)}
+                          className={`px-3 py-1 rounded-full font-semibold transition-colors ${
+                            channel === ch
+                              ? 'bg-orange-600 text-white'
+                              : 'text-gray-300 hover:bg-slate-700'
+                          }`}
+                        >
+                          {renderChannelLabel(ch)}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+
                   <div>
                     <label className="block text-sm font-medium text-gray-300 mb-1">
                       Título do Post
