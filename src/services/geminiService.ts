@@ -9,15 +9,6 @@ import type {
   VideoScript,
 } from "../types";
 
-// Mesmos canais que o painel usa
-export type SocialPlatform =
-  | "instagram"
-  | "facebook"
-  | "x"
-  | "tiktok"
-  | "whatsapp"
-  | "web";
-
 /**
  * Busca produtos.
  * - Shopee: usa fluxo via n8n (precisa das keys do usuário em user_api_keys).
@@ -69,14 +60,10 @@ export const searchProductOptions = async (
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           userId: user.id,
-          // orgId: se você tiver org no Supabase, pode preencher aqui depois
           query: productQuery,
-          filters: {
-            limit: 24,
-          },
+          filters: { limit: 24 },
           sort: "relevance",
           country: "BR",
-          // appId/password não precisam ir se o n8n já lê isso do Postgres
         }),
       });
 
@@ -99,7 +86,6 @@ export const searchProductOptions = async (
         throw new Error("Nenhum produto encontrado para esta busca.");
       }
 
-      // Mapear o formato do n8n para o ProductOption esperado pela UI
       const products: ProductOption[] = items.map((p: any) => ({
         productName: p.title ?? p.nome ?? "Produto",
         imageUrl: p.image ?? p.image_url ?? "",
@@ -139,18 +125,13 @@ export const searchProductOptions = async (
 };
 
 /**
- * Etapa 2: Gera conteúdo + shortlink para um produto selecionado, via n8n.
- * Aqui NÃO usamos Gemini; apenas:
- * - chamamos o webhook shopee_subids para gerar link rastreável
- * - montamos uma legenda/CTA simples no front
- *
- * Agora recebe também o `platform` (instagram, facebook, x, web, etc)
- * para o n8n escolher o SubID correto.
+ * Gera conteúdo + shortlink para um produto, via n8n.
+ * Agora recebe "platform" (instagram, facebook, x, web, etc.).
  */
 export const generatePostForProduct = async (
   product: ProductOption,
   provider: string,
-  platform: SocialPlatform = "instagram"
+  platform: string
 ): Promise<PostContent & { productImageUrl: string }> => {
   if (provider !== "Shopee") {
     throw new Error(
@@ -166,7 +147,6 @@ export const generatePostForProduct = async (
     throw new Error("Usuário não autenticado. Por favor, faça login.");
   }
 
-  // Chama o webhook que gera shortlink + salva/agenda no n8n
   const webhookUrl = "https://n8n.seureview.com.br/webhook/shopee_subids";
 
   const priceNumber = (() => {
@@ -179,9 +159,9 @@ export const generatePostForProduct = async (
 
   const body = {
     base_url: product.productUrl,
-    platform, // <- agora dinâmico, usado pelo n8n para escolher o SubID
+    platform, // <- plataforma escolhida no painel
     product: {
-      id: undefined, // se tiver id interno no ProductOption, joga aqui
+      id: undefined,
       title: product.productName,
       price: priceNumber,
       rating: product.rating,
@@ -189,7 +169,7 @@ export const generatePostForProduct = async (
       url: product.productUrl,
     },
     userId: user.id,
-    orgId: null, // se tiver org no Supabase, preenche depois
+    orgId: null,
   };
 
   const res = await fetch(webhookUrl, {
@@ -206,25 +186,12 @@ export const generatePostForProduct = async (
 
   const json = await res.json();
 
-  // Estrutura esperada do n8n (node "Map for API"):
-  // {
-  //   items: [
-  //     {
-  //       id, title, price, price_str, rating,
-  //       image, marketplace, canonicalUrl, url,
-  //       links: { [platform]: url }
-  //     }
-  //   ],
-  //   ...
-  // }
+  // Esperado: items[0].links[platform] com o link já com subid
   const firstItem = Array.isArray(json.items) ? json.items[0] : null;
   const links = (firstItem?.links ?? {}) as Record<string, string | undefined>;
 
   const affiliateUrl: string =
-    links[platform] ||
-    firstItem?.url ||
-    firstItem?.canonicalUrl ||
-    product.productUrl;
+    links[platform] || firstItem?.url || product.productUrl;
 
   const socialPostTitle = `Oferta Shopee: ${product.productName}`;
   const callToAction = "Clique no link e aproveite essa oferta exclusiva!";
@@ -307,7 +274,7 @@ export const generatePostForProduct = async (
 };
 
 /**
- * Funções abaixo ainda são stubs (IA desativada).
+ * Stubs (IA desativada)
  */
 
 export const generateReelsVideo = async (
@@ -358,7 +325,6 @@ export const compareProducts = async (
   _product1: ProductOption,
   _product2: ProductOption
 ): Promise<string> => {
-  // Stub apenas para não quebrar o build.
   throw new Error(
     "Comparador de produtos foi desativado nesta versão. Use apenas a geração de postagens."
   );
